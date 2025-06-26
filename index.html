@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; }
         #app-container { height: 100%; width: 100%; position: relative; }
@@ -23,7 +22,7 @@
         #map { height: 100%; width: 100%; background-color: #ddd; }
         .map-overlay { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000; background-color: rgba(255, 255, 255, 0.9); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
         .map-overlay p { font-size: 0.8em; margin: 0 0 5px 0; text-align: left; }
-        select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 10px;}
         .back-button { background: none; border: none; font-size: 1.2em; color: #555; cursor: pointer; position: absolute; top: 15px; left: 15px; z-index: 1001; }
         .centered-content .back-button { top: 20px; left: 20px; }
         #message-box { margin-top: 15px; font-size: 1em; font-weight: bold; }
@@ -43,9 +42,13 @@
             <div id="map"></div>
             <div class="map-overlay">
                 <button class="back-button" id="back-to-selection1">&larr; Tornar</button>
-                <p>Veient la línia:</p>
-                <select id="linea-selector">
+                <p>Tria línia i sentit:</p>
+                <select id="linea-selector-ver">
                     <option value="Igualada-Barcelona">Línia Igualada - Barcelona</option>
+                </select>
+                <select id="sentido-selector-ver">
+                    <option value="Direcció Barcelona">Direcció Barcelona</option>
+                    <option value="Direcció Igualada">Direcció Igualada</option>
                 </select>
                 <div id="eta-display" class="hidden">Calculant temps d'arribada...</div>
             </div>
@@ -54,7 +57,11 @@
              <div class="centered-content">
                 <button class="back-button" id="back-to-selection2">&larr; Tornar</button>
                 <h2>Col·labora</h2>
-                <p>Prem el botó per compartir la ubicació d'aquest bus de forma 100% anònima.</p>
+                <p>Tria el sentit i prem el botó per compartir la teva ubicació de forma anònima.</p>
+                 <select id="sentido-selector-reportar">
+                    <option value="Direcció Barcelona">Viatjo en direcció Barcelona</option>
+                    <option value="Direcció Igualada">Viatjo en direcció Igualada</option>
+                </select>
                 <button id="report-button">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                     Reportar Posició
@@ -68,8 +75,8 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- CONFIGURACIÓ ---
-            const SUPABASE_URL = 'https://thwtdhppssvcxtgdrmqc.supabase.co'; // <-- POSA LA TEVA URL AQUÍ
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod3RkaHBwc3N2Y3h0Z2RybXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NTIxOTgsImV4cCI6MjA2NjQyODE5OH0.x1Mv3qIMaiIQI3d7jy48a9bndaWBEbOxFn5LvWqihDI';      // <-- POSA LA TEVA CLAU AQUÍ
+            const SUPABASE_URL = 'https://thwtdhppssvcxtgdrmqc.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod3RkaHBwc3N2Y3h0Z2RybXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NTIxOTgsImV4cCI6MjA2NjQyODE5OH0.x1Mv3qIMaiIQI3d7jy48a9bndaWBEbOxFn5LvWqihDI';
             const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const VELOCITAT_MITJANA_BUS_KMH = 25;
 
@@ -81,7 +88,9 @@
             const btnEstoyEnBus = document.getElementById('btn-estoy-en-bus');
             const btnBack1 = document.getElementById('back-to-selection1');
             const btnBack2 = document.getElementById('back-to-selection2');
-            const lineaSelector = document.getElementById('linea-selector');
+            const lineaSelectorVer = document.getElementById('linea-selector-ver'); // MODIFICAT
+            const sentidoSelectorVer = document.getElementById('sentido-selector-ver'); // NOU
+            const sentidoSelectorReportar = document.getElementById('sentido-selector-reportar'); // NOU
             const reportButton = document.getElementById('report-button');
             const messageBox = document.getElementById('message-box');
             const etaDisplay = document.getElementById('eta-display');
@@ -91,7 +100,6 @@
             let busLayer = null;
             let updateInterval = null;
 
-            // ICONA DE BUS ACTUALITZADA
             const busIcon = L.icon({
                 iconUrl: 'https://cdn-icons-png.flaticon.com/64/1168/1168598.png',
                 iconSize: [38, 38]
@@ -106,13 +114,9 @@
 
             btnVerBus.addEventListener('click', () => {
                 mostrarPanel(panelVer);
-                if (!map) {
-                    initMap();
-                }
+                if (!map) { initMap(); }
                 actualizarMapa();
-                if (!updateInterval) {
-                   updateInterval = setInterval(actualizarMapa, 20000);
-                }
+                if (!updateInterval) { updateInterval = setInterval(actualizarMapa, 20000); }
             });
 
             btnEstoyEnBus.addEventListener('click', () => {
@@ -121,80 +125,76 @@
             });
 
             function volverAlInicio() {
-                if (updateInterval) {
-                    clearInterval(updateInterval);
-                    updateInterval = null;
-                }
+                if (updateInterval) { clearInterval(updateInterval); updateInterval = null; }
                 mostrarPanel(panelSeleccion);
             }
             btnBack1.addEventListener('click', volverAlInicio);
             btnBack2.addEventListener('click', volverAlInicio);
 
             function initMap() {
-                try {
-                    map = L.map('map').setView([41.50, 1.85], 10);
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    }).addTo(map);
-                    busLayer = L.layerGroup().addTo(map);
-                    setTimeout(() => map.invalidateSize(), 100);
-                } catch (error) {
-                    console.error("Error en inicialitzar el mapa:", error);
-                }
+                map = L.map('map').setView([41.50, 1.85], 10);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                }).addTo(map);
+                busLayer = L.layerGroup().addTo(map);
+                setTimeout(() => map.invalidateSize(), 100);
             }
 
+            // MODIFICAT: Ara envia també el sentit
             reportButton.addEventListener('click', () => {
                 showMessage('Sol·licitant ubicació...', 'blue');
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         showMessage('Enviant el report...', 'blue');
                         const { latitude, longitude } = position.coords;
+                        const linea = "Igualada-Barcelona"; // Hardcoded per ara
+                        const sentit = sentidoSelectorReportar.value; // NOU: Agafa el valor del sentit
                         supabaseClient
                             .from('bus_checkins')
-                            .insert({ linea_bus: lineaSelector.value, lat: latitude, lon: longitude })
+                            .insert({ linea_bus: linea, lat: latitude, lon: longitude, sentit: sentit }) // NOU: Afegeix el sentit a la base de dades
                             .then(handleSupabaseResponse);
                     },
-                    handleGeolocationError,
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    handleGeolocationError
                 );
             });
             
             function handleSupabaseResponse({ error }) {
-                if (error) {
-                    showMessage("Error en enviar el report.", 'red');
-                } else {
-                    showMessage("Gràcies per la teva col·laboració!", 'green');
-                    reminderText.classList.remove('hidden');
-                }
+                if (error) { showMessage("Error en enviar el report.", 'red'); } 
+                else { showMessage("Gràcies per la teva col·laboració!", 'green'); reminderText.classList.remove('hidden'); }
             }
             
             function handleGeolocationError(error) {
                 let missatgeError = "No s'ha pogut obtenir la ubicació. ";
                 switch (error.code) {
-                    case error.PERMISSION_DENIED: missatgeError += 'Has denegat el permís.'; break;
-                    case error.POSITION_UNAVAILABLE: missatgeError += 'Senyal de GPS no disponible.'; break;
-                    case error.TIMEOUT: missatgeError += 'La petició ha trigat massa.'; break;
+                    case 1: missatgeError += 'Has denegat el permís.'; break;
+                    case 2: missatgeError += 'Senyal de GPS no disponible.'; break;
+                    case 3: missatgeError += 'La petició ha trigat massa.'; break;
                     default: missatgeError += 'Error desconegut.'; break;
                 }
                 showMessage(missatgeError, 'red');
             }
 
+            // MODIFICAT: Ara filtra també per sentit
             async function actualizarMapa() {
                 if (!map) return;
                 try {
-                    const selectedLine = lineaSelector.value;
+                    const selectedLine = lineaSelectorVer.value;
+                    const selectedSentido = sentidoSelectorVer.value; // NOU: Agafa el sentit seleccionat
                     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+                    
                     await supabaseClient.from('bus_checkins').delete().lt('created_at', tenMinutesAgo);
-                    const { data: buses, error } = await supabaseClient.from('bus_checkins').select('lat, lon').eq('linea_bus', selectedLine).gt('created_at', tenMinutesAgo);
+                    
+                    const { data: buses, error } = await supabaseClient
+                        .from('bus_checkins')
+                        .select('lat, lon')
+                        .eq('linea_bus', selectedLine)
+                        .eq('sentit', selectedSentido); // NOU: Filtra també per sentit
+
                     if (error) throw error;
 
                     busLayer.clearLayers();
-                    buses.forEach(bus => {
-                        L.marker([bus.lat, bus.lon], { icon: busIcon }).addTo(busLayer);
-                    });
-
+                    buses.forEach(bus => { L.marker([bus.lat, bus.lon], { icon: busIcon }).addTo(busLayer); });
                     calcularETAdinamic(buses);
-
                 } catch (error) {
                     console.error('Error en actualitzar el mapa:', error);
                 }
@@ -208,7 +208,7 @@
             
             function calcularETAdinamic(buses) {
                 if (buses.length === 0) {
-                    etaDisplay.textContent = "No hi ha busos actius en aquesta línia.";
+                    etaDisplay.textContent = "No hi ha busos actius per aquest sentit.";
                     etaDisplay.classList.remove('hidden');
                     return;
                 }
@@ -219,9 +219,7 @@
                         let distanciaMinima = Infinity;
                         buses.forEach(bus => {
                             const dist = calcularDistancia(userLat, userLon, bus.lat, bus.lon);
-                            if (dist < distanciaMinima) {
-                                distanciaMinima = dist;
-                            }
+                            if (dist < distanciaMinima) { distanciaMinima = dist; }
                         });
                         const tempsEstimatMinuts = (distanciaMinima / VELOCITAT_MITJANA_BUS_KMH) * 60;
                         etaDisplay.textContent = `El bus més proper arribarà en uns ${Math.round(tempsEstimatMinuts)} minuts.`;
@@ -243,7 +241,8 @@
                 return R * c;
             }
 
-            lineaSelector.addEventListener('change', actualizarMapa);
+            lineaSelectorVer.addEventListener('change', actualizarMapa);
+            sentidoSelectorVer.addEventListener('change', actualizarMapa); // NOU: Actualitza el mapa quan canvia el sentit
         });
     </script>
 </body>
