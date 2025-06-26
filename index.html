@@ -7,12 +7,34 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>body,html{margin:0;padding:0;height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background-color:#f0f2f5}#app-container{height:100%;width:100%;position:relative}#panel-seleccion,.centered-content{display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:20px;box-sizing:border-box}.full-panel{height:100%;width:100%;position:absolute;top:0;left:0}.hidden{display:none!important}h1{font-size:2.5em;margin:0 0 10px 0;color:#333}h2{font-size:1.8em;margin:0 0 10px 0;color:#333}p{font-size:1em;color:#666;text-align:center;max-width:300px;line-height:1.5}.rol-button,#report-button{width:100%;max-width:320px;padding:15px;font-size:1.1em;font-weight:700;color:#fff;background-color:#007bff;border:none;border-radius:8px;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center}.rol-button:hover,#report-button:hover{background-color:#0056b3}#report-button svg{margin-right:8px}#map{height:100%;width:100%;background-color:#ddd}.map-overlay{position:absolute;top:10px;left:10px;right:10px;z-index:1000;background-color:rgba(255,255,255,.9);padding:10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2)}.map-overlay p{font-size:.8em;margin:0 0 5px 0;text-align:left}select{width:100%;padding:10px;border-radius:5px;border:1px solid #ccc}.back-button{background:0 0;border:none;font-size:1.2em;color:#555;cursor:pointer;position:absolute;top:15px;left:15px;z-index:1001}.centered-content .back-button{top:20px;left:20px}#message-box{margin-top:15px;font-size:1em;font-weight:700}</style>
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; }
+        #app-container { height: 100%; width: 100%; position: relative; }
+        #panel-seleccion, .centered-content { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding: 20px; box-sizing: border-box; }
+        .full-panel { height: 100%; width: 100%; position: absolute; top: 0; left: 0; }
+        .hidden { display: none !important; }
+        h1 { font-size: 2.5em; margin: 0 0 10px 0; color: #333; }
+        h2 { font-size: 1.8em; margin: 0 0 10px 0; color: #333; }
+        p { font-size: 1em; color: #666; text-align: center; max-width: 300px; line-height: 1.5; }
+        .rol-button, #report-button { width: 100%; max-width: 320px; padding: 15px; font-size: 1.1em; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; }
+        .rol-button:hover, #report-button:hover { background-color: #0056b3; }
+        #report-button svg { margin-right: 8px; }
+        #map { height: 100%; width: 100%; background-color: #ddd; }
+        .map-overlay { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000; background-color: rgba(255, 255, 255, 0.9); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .map-overlay p { font-size: 0.8em; margin: 0 0 5px 0; text-align: left; }
+        select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        .back-button { background: none; border: none; font-size: 1.2em; color: #555; cursor: pointer; position: absolute; top: 15px; left: 15px; z-index: 1001; }
+        .centered-content .back-button { top: 20px; left: 20px; }
+        #message-box { margin-top: 15px; font-size: 1em; font-weight: bold; }
+        #eta-display { margin-top: 10px; padding: 10px; background-color: #eef7ff; border: 1px solid #007bff; border-radius: 5px; text-align: center; font-weight: bold; color: #0056b3; }
+        .reminder-text { font-size: 0.8em; color: #e85d04; font-weight: bold; margin-top: 20px; }
+    </style>
 </head>
 <body>
     <div id="app-container">
         <div id="panel-seleccion">
-            <h1>PROVA FINAL - VERSIÓ NOVA</h1>
+            <h1>On està el bus!!!</h1>
             <p>Una forma col·laborativa de veure el teu bus.</p>
             <button id="btn-ver-bus" class="rol-button">VEURE ON ÉS EL MEU BUS</button>
             <button id="btn-estoy-en-bus" class="rol-button">ESTIC AL BUS (REPORTAR)</button>
@@ -22,7 +44,10 @@
             <div class="map-overlay">
                 <button class="back-button" id="back-to-selection1">&larr; Tornar</button>
                 <p>Veient la línia:</p>
-                <select id="linea-selector"><option value="Igualada-Barcelona">Línia Igualada - Barcelona</option></select>
+                <select id="linea-selector">
+                    <option value="Igualada-Barcelona">Línia Igualada - Barcelona</option>
+                </select>
+                <div id="eta-display" class="hidden">Calculant temps d'arribada...</div>
             </div>
         </div>
         <div id="panel-reportar" class="hidden full-panel">
@@ -30,24 +55,34 @@
                 <button class="back-button" id="back-to-selection2">&larr; Tornar</button>
                 <h2>Col·labora</h2>
                 <p>Prem el botó per compartir la ubicació d'aquest bus de forma 100% anònima.</p>
-                <button id="report-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>Reportar Posició</button>
+                <button id="report-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    Reportar Posició
+                </button>
                 <div id="message-box"></div>
-            </div>
+                <p id="reminder-text" class="hidden reminder-text">Recorda tornar al menú principal quan baixis del bus per deixar de compartir.</p>
+             </div>
         </div>
     </div>
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // PROVA DE DIAGNÒSTIC
-            alert('SI VEUS AQUEST MISSATGE, EL NOU CODI ESTÀ FUNCIONANT!');
-
             // --- CONFIGURACIÓ ---
-            const SUPABASE_URL = 'https://thwtdhppssvcxtgdrmqc.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod3RkaHBwc3N2Y3h0Z2RybXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NTIxOTgsImV4cCI6MjA2NjQyODE5OH0.x1Mv3qIMaiIQI3d7jy48a9bndaWBEbOxFn5LvWqihDI';
+            const SUPABASE_URL = 'https://thwtdhppssvcxtgdrmqc.supabase.co'; // <-- POSA LA TEVA URL AQUÍ
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod3RkaHBwc3N2Y3h0Z2RybXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NTIxOTgsImV4cCI6MjA2NjQyODE5OH0.x1Mv3qIMaiIQI3d7jy48a9bndaWBEbOxFn5LvWqihDI';      // <-- POSA LA TEVA CLAU AQUÍ
             const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            const VELOCITAT_MITJANA_BUS_KMH = 25;
 
-            // --- La resta del codi ---
-            const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelector=document.getElementById("linea-selector"),reportButton=document.getElementById("report-button"),messageBox=document.getElementById("message-box");let map=null,busLayer=null,updateInterval=null;const busIcon=L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/64/1167/1167941.png",iconSize:[38,38]});function mostrarPanel(e){panelSeleccion.classList.add("hidden"),panelVer.classList.add("hidden"),panelReportar.classList.add("hidden"),e.classList.remove("hidden")}btnVerBus.addEventListener("click",()=>{mostrarPanel(panelVer),map||initMap(),actualizarMapa()}),btnEstoyEnBus.addEventListener("click",()=>{mostrarPanel(panelReportar)});function volverAlInicio(){mostrarPanel(panelSeleccion)}btnBack1.addEventListener("click",volverAlInicio),btnBack2.addEventListener("click",volverAlInicio);function initMap(){try{map=L.map("map").setView([41.5,1.85],10),L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map),busLayer=L.layerGroup().addTo(map),setTimeout(()=>map.invalidateSize(),100),updateInterval&&clearInterval(updateInterval),updateInterval=setInterval(actualizarMapa,2e4)}catch(e){console.error("Error en inicialitzar el mapa:",e),alert("Ha ocorregut un error en carregar el mapa.")}}reportButton.addEventListener("click",()=>{showMessage("Sol·licitant ubicació...","blue"),navigator.geolocation?navigator.geolocation.getCurrentPosition(e=>{showMessage("Enviant el report...","blue");const{latitude:o,longitude:t}=e.coords;supabaseClient.from("bus_checkins").insert({linea_bus:lineaSelector.value,lat:o,lon:t}).then(handleSupabaseResponse)},handleGeolocationError,{enableHighAccuracy:!0,timeout:1e4,maximumAge:0}):showMessage("El teu navegador no suporta la geolocalització.","red")});function handleSupabaseResponse({error:e}){e?(console.error("Error en reportar a Supabase:",e),showMessage("Error en enviar el report.","red")):showMessage("Gràcies per la teva col·laboració!","green")}
-            function handleGeolocationError(e){let o="No s'ha pogut obtenir la ubicació. ";switch(e.code){case e.PERMISSION_DENIED:o+="Has denegat el permís.";break;case e.POSITION_UNAVAILABLE:o+="Senyal de GPS no disponible.";break;case e.TIMEOUT:o+="La petició ha trigat massa.";break;default:o+="Error desconegut."}showMessage(o,"red")}async function actualizarMapa(){if(map)try{const e=lineaSelector.value,o=new Date(Date.now()-6e5).toISOString();await supabaseClient.from("bus_checkins").delete().lt("created_at",o);const{data:t,error:r}=await supabaseClient.from("bus_checkins").select("*").eq("linea_bus",e).gt("created_at",o);if(r)throw r;busLayer.clearLayers(),t.forEach(e=>{L.marker([e.lat,e.lon],{icon:busIcon}).addTo(busLayer)})}catch(e){console.error("Error en actualitzar el mapa:",e)}}function showMessage(e,o){messageBox.textContent=e,messageBox.style.color=o,setTimeout(()=>{messageBox.textContent===e&&(messageBox.textContent="")},5e3)}lineaSelector.addEventListener("change",actualizarMapa);
+            const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelector=document.getElementById("linea-selector"),reportButton=document.getElementById("report-button"),messageBox=document.getElementById("message-box"),etaDisplay=document.getElementById("eta-display"),reminderText=document.getElementById("reminder-text");let map=null,busLayer=null,updateInterval=null;const busIcon=L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/64/1167/1167941.png",iconSize:[38,38]});function mostrarPanel(e){panelSeleccion.classList.add("hidden"),panelVer.classList.add("hidden"),panelReportar.classList.add("hidden"),e.classList.remove("hidden")}
+            btnVerBus.addEventListener("click",()=>{mostrarPanel(panelVer),map||initMap(),actualizarMapa()}),btnEstoyEnBus.addEventListener("click",()=>{reminderText.classList.add("hidden"),mostrarPanel(panelReportar)});function volverAlInicio(){updateInterval&&clearInterval(updateInterval),updateInterval=null,mostrarPanel(panelSeleccion)}
+            btnBack1.addEventListener("click",volverAlInicio),btnBack2.addEventListener("click",volverAlInicio);function initMap(){map=L.map("map").setView([41.5,1.85],10),L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map),busLayer=L.layerGroup().addTo(map),setTimeout(()=>map.invalidateSize(),100)}
+            reportButton.addEventListener("click",()=>{showMessage("Sol·licitant ubicació...","blue"),navigator.geolocation.getCurrentPosition(e=>{showMessage("Enviant el report...","blue");const{latitude:o,longitude:t}=e.coords;supabaseClient.from("bus_checkins").insert({linea_bus:lineaSelector.value,lat:o,lon:t}).then(handleSupabaseResponse)},handleGeolocationError,{enableHighAccuracy:!0,timeout:1e4,maximumAge:0})});function handleSupabaseResponse({error:e}){e?showMessage("Error en enviar el report.","red"):(showMessage("Gràcies per la teva col·laboració!","green"),reminderText.classList.remove("hidden"))}
+            function handleGeolocationError(e){let o="No s'ha pogut obtenir la ubicació. ";switch(e.code){case e.PERMISSION_DENIED:o+="Has denegat el permís.";break;case e.POSITION_UNAVAILABLE:o+="Senyal de GPS no disponible.";break;case e.TIMEOUT:o+="La petició ha trigat massa.";break;default:o+="Error desconegut."}showMessage(o,"red")}
+            async function actualizarMapa(){if(!map)return;try{const e=lineaSelector.value,o=new Date(Date.now()-6e5).toISOString();await supabaseClient.from("bus_checkins").delete().lt("created_at",o);const{data:t,error:r}=await supabaseClient.from("bus_checkins").select("lat, lon").eq("linea_bus",e).gt("created_at",o);if(r)throw r;busLayer.clearLayers(),t.forEach(e=>{L.marker([e.lat,e.lon],{icon:busIcon}).addTo(busLayer)}),calcularETAdinamic(t)}catch(e){console.error("Error en actualitzar el mapa:",e)}}
+            function showMessage(e,o){messageBox.textContent=e,messageBox.style.color=o,setTimeout(()=>{messageBox.textContent===e&&(messageBox.textContent="")},5e3)}
+            function calcularETAdinamic(e){e.length===0?(etaDisplay.textContent="No hi ha busos actius en aquesta línia.",etaDisplay.classList.remove("hidden")):navigator.geolocation.getCurrentPosition(o=>{const t=o.coords.latitude,r=o.coords.longitude;let a=1/0;e.forEach(e=>{const o=calcularDistancia(t,r,e.lat,e.lon);o<a&&(a=o)});const n=a/VELOCITAT_MITJANA_BUS_KMH*60;etaDisplay.textContent=`El bus més proper arribarà en uns ${Math.round(n)} minuts.`,etaDisplay.classList.remove("hidden")},()=>{etaDisplay.textContent="Activa la localització per calcular el temps d'arribada.",etaDisplay.classList.remove("hidden")})}
+            function calcularDistancia(e,o,t,r){const n=6371,a=(t-e)*Math.PI/180,s=(r-o)*Math.PI/180,i=Math.sin(a/2)*Math.sin(a/2)+Math.cos(e*Math.PI/180)*Math.cos(t*Math.PI/180)*Math.sin(s/2)*Math.sin(s/2),l=2*Math.atan2(Math.sqrt(i),Math.sqrt(1-i));return n*l}
+            lineaSelector.addEventListener("change",actualizarMapa);btnVerBus.addEventListener("click",()=>{updateInterval||(updateInterval=setInterval(actualizarMapa,2e4))});
         });
     </script>
 </body>
