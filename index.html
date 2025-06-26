@@ -73,16 +73,177 @@
             const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const VELOCITAT_MITJANA_BUS_KMH = 25;
 
-            const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelector=document.getElementById("linea-selector"),reportButton=document.getElementById("report-button"),messageBox=document.getElementById("message-box"),etaDisplay=document.getElementById("eta-display"),reminderText=document.getElementById("reminder-text");let map=null,busLayer=null,updateInterval=null;const busIcon=L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/64/1167/1167941.png",iconSize:[38,38]});function mostrarPanel(e){panelSeleccion.classList.add("hidden"),panelVer.classList.add("hidden"),panelReportar.classList.add("hidden"),e.classList.remove("hidden")}
-            btnVerBus.addEventListener("click",()=>{mostrarPanel(panelVer),map||initMap(),actualizarMapa()}),btnEstoyEnBus.addEventListener("click",()=>{reminderText.classList.add("hidden"),mostrarPanel(panelReportar)});function volverAlInicio(){updateInterval&&clearInterval(updateInterval),updateInterval=null,mostrarPanel(panelSeleccion)}
-            btnBack1.addEventListener("click",volverAlInicio),btnBack2.addEventListener("click",volverAlInicio);function initMap(){map=L.map("map").setView([41.5,1.85],10),L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map),busLayer=L.layerGroup().addTo(map),setTimeout(()=>map.invalidateSize(),100)}
-            reportButton.addEventListener("click",()=>{showMessage("Sol·licitant ubicació...","blue"),navigator.geolocation.getCurrentPosition(e=>{showMessage("Enviant el report...","blue");const{latitude:o,longitude:t}=e.coords;supabaseClient.from("bus_checkins").insert({linea_bus:lineaSelector.value,lat:o,lon:t}).then(handleSupabaseResponse)},handleGeolocationError,{enableHighAccuracy:!0,timeout:1e4,maximumAge:0})});function handleSupabaseResponse({error:e}){e?showMessage("Error en enviar el report.","red"):(showMessage("Gràcies per la teva col·laboració!","green"),reminderText.classList.remove("hidden"))}
-            function handleGeolocationError(e){let o="No s'ha pogut obtenir la ubicació. ";switch(e.code){case e.PERMISSION_DENIED:o+="Has denegat el permís.";break;case e.POSITION_UNAVAILABLE:o+="Senyal de GPS no disponible.";break;case e.TIMEOUT:o+="La petició ha trigat massa.";break;default:o+="Error desconegut."}showMessage(o,"red")}
-            async function actualizarMapa(){if(!map)return;try{const e=lineaSelector.value,o=new Date(Date.now()-6e5).toISOString();await supabaseClient.from("bus_checkins").delete().lt("created_at",o);const{data:t,error:r}=await supabaseClient.from("bus_checkins").select("lat, lon").eq("linea_bus",e).gt("created_at",o);if(r)throw r;busLayer.clearLayers(),t.forEach(e=>{L.marker([e.lat,e.lon],{icon:busIcon}).addTo(busLayer)}),calcularETAdinamic(t)}catch(e){console.error("Error en actualitzar el mapa:",e)}}
-            function showMessage(e,o){messageBox.textContent=e,messageBox.style.color=o,setTimeout(()=>{messageBox.textContent===e&&(messageBox.textContent="")},5e3)}
-            function calcularETAdinamic(e){e.length===0?(etaDisplay.textContent="No hi ha busos actius en aquesta línia.",etaDisplay.classList.remove("hidden")):navigator.geolocation.getCurrentPosition(o=>{const t=o.coords.latitude,r=o.coords.longitude;let a=1/0;e.forEach(e=>{const o=calcularDistancia(t,r,e.lat,e.lon);o<a&&(a=o)});const n=a/VELOCITAT_MITJANA_BUS_KMH*60;etaDisplay.textContent=`El bus més proper arribarà en uns ${Math.round(n)} minuts.`,etaDisplay.classList.remove("hidden")},()=>{etaDisplay.textContent="Activa la localització per calcular el temps d'arribada.",etaDisplay.classList.remove("hidden")})}
-            function calcularDistancia(e,o,t,r){const n=6371,a=(t-e)*Math.PI/180,s=(r-o)*Math.PI/180,i=Math.sin(a/2)*Math.sin(a/2)+Math.cos(e*Math.PI/180)*Math.cos(t*Math.PI/180)*Math.sin(s/2)*Math.sin(s/2),l=2*Math.atan2(Math.sqrt(i),Math.sqrt(1-i));return n*l}
-            lineaSelector.addEventListener("change",actualizarMapa);btnVerBus.addEventListener("click",()=>{updateInterval||(updateInterval=setInterval(actualizarMapa,2e4))});
+            // --- Elements del DOM ---
+            const panelSeleccion = document.getElementById('panel-seleccion');
+            const panelVer = document.getElementById('panel-ver');
+            const panelReportar = document.getElementById('panel-reportar');
+            const btnVerBus = document.getElementById('btn-ver-bus');
+            const btnEstoyEnBus = document.getElementById('btn-estoy-en-bus');
+            const btnBack1 = document.getElementById('back-to-selection1');
+            const btnBack2 = document.getElementById('back-to-selection2');
+            const lineaSelector = document.getElementById('linea-selector');
+            const reportButton = document.getElementById('report-button');
+            const messageBox = document.getElementById('message-box');
+            const etaDisplay = document.getElementById('eta-display');
+            const reminderText = document.getElementById('reminder-text');
+
+            let map = null;
+            let busLayer = null;
+            let updateInterval = null;
+
+            // ICONA DE BUS ACTUALITZADA
+            const busIcon = L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/64/1168/1168598.png',
+                iconSize: [38, 38]
+            });
+
+            function mostrarPanel(panelAMostrar) {
+                panelSeleccion.classList.add('hidden');
+                panelVer.classList.add('hidden');
+                panelReportar.classList.add('hidden');
+                panelAMostrar.classList.remove('hidden');
+            }
+
+            btnVerBus.addEventListener('click', () => {
+                mostrarPanel(panelVer);
+                if (!map) {
+                    initMap();
+                }
+                actualizarMapa();
+                if (!updateInterval) {
+                   updateInterval = setInterval(actualizarMapa, 20000);
+                }
+            });
+
+            btnEstoyEnBus.addEventListener('click', () => {
+                reminderText.classList.add('hidden');
+                mostrarPanel(panelReportar);
+            });
+
+            function volverAlInicio() {
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                    updateInterval = null;
+                }
+                mostrarPanel(panelSeleccion);
+            }
+            btnBack1.addEventListener('click', volverAlInicio);
+            btnBack2.addEventListener('click', volverAlInicio);
+
+            function initMap() {
+                try {
+                    map = L.map('map').setView([41.50, 1.85], 10);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    }).addTo(map);
+                    busLayer = L.layerGroup().addTo(map);
+                    setTimeout(() => map.invalidateSize(), 100);
+                } catch (error) {
+                    console.error("Error en inicialitzar el mapa:", error);
+                }
+            }
+
+            reportButton.addEventListener('click', () => {
+                showMessage('Sol·licitant ubicació...', 'blue');
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        showMessage('Enviant el report...', 'blue');
+                        const { latitude, longitude } = position.coords;
+                        supabaseClient
+                            .from('bus_checkins')
+                            .insert({ linea_bus: lineaSelector.value, lat: latitude, lon: longitude })
+                            .then(handleSupabaseResponse);
+                    },
+                    handleGeolocationError,
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            });
+            
+            function handleSupabaseResponse({ error }) {
+                if (error) {
+                    showMessage("Error en enviar el report.", 'red');
+                } else {
+                    showMessage("Gràcies per la teva col·laboració!", 'green');
+                    reminderText.classList.remove('hidden');
+                }
+            }
+            
+            function handleGeolocationError(error) {
+                let missatgeError = "No s'ha pogut obtenir la ubicació. ";
+                switch (error.code) {
+                    case error.PERMISSION_DENIED: missatgeError += 'Has denegat el permís.'; break;
+                    case error.POSITION_UNAVAILABLE: missatgeError += 'Senyal de GPS no disponible.'; break;
+                    case error.TIMEOUT: missatgeError += 'La petició ha trigat massa.'; break;
+                    default: missatgeError += 'Error desconegut.'; break;
+                }
+                showMessage(missatgeError, 'red');
+            }
+
+            async function actualizarMapa() {
+                if (!map) return;
+                try {
+                    const selectedLine = lineaSelector.value;
+                    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+                    await supabaseClient.from('bus_checkins').delete().lt('created_at', tenMinutesAgo);
+                    const { data: buses, error } = await supabaseClient.from('bus_checkins').select('lat, lon').eq('linea_bus', selectedLine).gt('created_at', tenMinutesAgo);
+                    if (error) throw error;
+
+                    busLayer.clearLayers();
+                    buses.forEach(bus => {
+                        L.marker([bus.lat, bus.lon], { icon: busIcon }).addTo(busLayer);
+                    });
+
+                    calcularETAdinamic(buses);
+
+                } catch (error) {
+                    console.error('Error en actualitzar el mapa:', error);
+                }
+            }
+
+            function showMessage(text, color) {
+                messageBox.textContent = text;
+                messageBox.style.color = color;
+                setTimeout(() => { if (messageBox.textContent === text) { messageBox.textContent = ''; } }, 5000);
+            }
+            
+            function calcularETAdinamic(buses) {
+                if (buses.length === 0) {
+                    etaDisplay.textContent = "No hi ha busos actius en aquesta línia.";
+                    etaDisplay.classList.remove('hidden');
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (userPosition) => {
+                        const userLat = userPosition.coords.latitude;
+                        const userLon = userPosition.coords.longitude;
+                        let distanciaMinima = Infinity;
+                        buses.forEach(bus => {
+                            const dist = calcularDistancia(userLat, userLon, bus.lat, bus.lon);
+                            if (dist < distanciaMinima) {
+                                distanciaMinima = dist;
+                            }
+                        });
+                        const tempsEstimatMinuts = (distanciaMinima / VELOCITAT_MITJANA_BUS_KMH) * 60;
+                        etaDisplay.textContent = `El bus més proper arribarà en uns ${Math.round(tempsEstimatMinuts)} minuts.`;
+                        etaDisplay.classList.remove('hidden');
+                    },
+                    () => {
+                        etaDisplay.textContent = "Activa la localització per calcular el temps d'arribada.";
+                        etaDisplay.classList.remove('hidden');
+                    }
+                );
+            }
+
+            function calcularDistancia(lat1, lon1, lat2, lon2) {
+                const R = 6371;
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            lineaSelector.addEventListener('change', actualizarMapa);
         });
     </script>
 </body>
