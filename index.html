@@ -8,60 +8,60 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; }
+        :root {
+            --color-primari: #005A9C;
+            --color-secundari: #00BFFF;
+            --color-fons: #f4f7f6;
+            --color-text: #333;
+            --color-blanc: #ffffff;
+            --ombra-suau: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--color-fons); }
         #app-container { height: 100%; width: 100%; position: relative; }
         #panel-seleccion, .centered-content { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding: 20px; box-sizing: border-box; }
-        .full-panel { height: 100%; width: 100%; position: absolute; top: 0; left: 0; }
+        .full-panel { height: 100%; width: 100%; position: absolute; top: 0; left: 0; background-color: var(--color-fons); }
         .hidden { display: none !important; }
-        h1, h2, h3 { color: #333; text-align: center; }
+        h1, h2, h3 { color: var(--color-text); text-align: center; font-weight: 700; }
         h1 { font-size: 2.5em; margin: 0 0 10px 0; }
         h2 { font-size: 1.8em; margin: 0 0 10px 0; }
-        p { font-size: 1em; color: #666; text-align: center; max-width: 300px; line-height: 1.5; }
-        .rol-button, #report-button, #chat-send-btn { width: 100%; padding: 15px; font-size: 1.1em; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; }
-        .rol-button:hover, #report-button:hover, #chat-send-btn:hover { background-color: #0056b3; }
+        p { font-size: 1em; color: #666; text-align: center; max-width: 320px; line-height: 1.5; }
+        .rol-button, #report-button, #chat-send-btn { width: 100%; max-width: 340px; padding: 18px; font-size: 1.1em; font-weight: bold; color: var(--color-blanc); background-color: var(--color-primari); border: none; border-radius: 12px; cursor: pointer; margin-top: 15px; display: flex; align-items: center; justify-content: center; box-shadow: var(--ombra-suau); transition: transform 0.2s, background-color 0.2s; }
+        .rol-button:hover, #report-button:hover, #chat-send-btn:hover { background-color: #004a80; transform: translateY(-2px); }
         #report-button svg { margin-right: 8px; }
         #map { height: 100%; width: 100%; background-color: #ddd; }
-        .map-overlay { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000; background-color: rgba(255, 255, 255, 0.9); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-        select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 10px; }
-        .back-button { background: none; border: none; font-size: 1.2em; color: #555; cursor: pointer; position: absolute; top: 15px; left: 15px; z-index: 2001; }
+        .map-overlay { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 1000; background-color: var(--color-blanc); padding: 15px; border-radius: 12px; box-shadow: var(--ombra-suau); }
+        select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 10px; background-color: #fff; }
+        .back-button { background: none; border: none; font-size: 1.5em; color: #aaa; cursor: pointer; position: absolute; top: 15px; left: 15px; z-index: 2001; transition: color 0.2s; padding: 5px; }
+        .back-button:hover { color: var(--color-text); }
         .centered-content .back-button { top: 20px; left: 20px; }
-        #message-box, #eta-display { margin-top: 10px; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; }
-        #eta-display { background-color: #eef7ff; border: 1px solid #007bff; color: #0056b3; }
-        .reminder-text { font-size: 0.8em; color: #e85d04; font-weight: bold; margin-top: 20px; }
-        /* --- NOUS ESTILS PEL XAT --- */
-        #chat-open-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background-color: #28a745; width: auto; padding: 10px 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        #chat-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f0f2f5; z-index: 3000; display: flex; flex-direction: column; }
-        .chat-header { background-color: white; padding: 10px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; }
-        .chat-header h3 { margin: 0; }
-        #chat-close-btn { position: absolute; top: 5px; right: 10px; font-size: 2em; background: none; border: none; color: #aaa; cursor: pointer; padding: 5px; line-height: 1; }
-        #chat-messages-list { flex-grow: 1; overflow-y: auto; padding: 10px; }
-        .chat-message { background-color: white; padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; max-width: 80%; }
-        .chat-message .apodo { font-weight: bold; color: #007bff; display: block; margin-bottom: 4px; }
-        .chat-input-area { background-color: white; padding: 10px; box-shadow: 0 -2px 4px rgba(0,0,0,0.1); display: flex; gap: 10px; }
-        #chat-nickname, #chat-message-input { border: 1px solid #ccc; padding: 10px; border-radius: 5px; }
-        #chat-nickname { flex-basis: 100px; }
+        #message-box { margin-top: 15px; font-size: 1em; font-weight: bold; }
+        #eta-display { margin-top: 10px; padding: 12px; background-color: #e6f7ff; border-radius: 8px; text-align: center; font-weight: bold; color: var(--color-primari); }
+        .reminder-text { font-size: 0.8em; color: #d9534f; font-weight: bold; margin-top: 20px; }
+        #chat-open-btn { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1000; background-color: #28a745; width: auto; padding: 12px 25px; box-shadow: var(--ombra-suau); border-radius: 50px; }
+        #chat-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--color-fons); z-index: 3000; display: flex; flex-direction: column; }
+        .chat-header { background-color: var(--color-blanc); padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; }
+        .chat-header h3 { margin: 0; font-size: 1.2em; }
+        #chat-close-btn { position: absolute; top: 50%; right: 15px; transform: translateY(-50%); font-size: 2em; background: none; border: none; color: #aaa; cursor: pointer; padding: 5px; line-height: 1; }
+        #chat-messages-list { flex-grow: 1; overflow-y: auto; padding: 15px; }
+        .chat-message { background-color: var(--color-blanc); padding: 10px 15px; border-radius: 18px; margin-bottom: 10px; max-width: 85%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); word-wrap: break-word; }
+        .chat-message .apodo { font-weight: bold; color: var(--color-primari); display: block; margin-bottom: 4px; }
+        .chat-input-area { background-color: var(--color-blanc); padding: 10px; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); display: flex; gap: 10px; align-items: center; }
+        #chat-nickname, #chat-message-input { border: 1px solid #ddd; padding: 12px; border-radius: 20px; }
+        #chat-nickname { flex-basis: 120px; }
         #chat-message-input { flex-grow: 1; }
-        #chat-send-btn { padding: 10px; margin-top: 0; }
+        #chat-send-btn { padding: 12px; margin-top: 0; border-radius: 20px; flex-shrink: 0; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="panel-seleccion"><h1>On està el bus!!!</h1><p>Una forma col·laborativa de veure el teu bus.</p><button id="btn-ver-bus" class="rol-button">VEURE ON ÉS EL MEU BUS</button><button id="btn-estoy-en-bus" class="rol-button">ESTIC AL BUS (REPORTAR)</button></div>
-        <div id="panel-ver" class="hidden full-panel"><div id="map"></div><div class="map-overlay"><button class="back-button" id="back-to-selection1">&larr; Tornar</button><p>Tria línia i sentit:</p><select id="linea-selector-ver"><option value="Igualada-Barcelona">Línia Igualada - Barcelona</option></select><select id="sentido-selector-ver"><option value="Direcció Barcelona">Direcció Barcelona</option><option value="Direcció Igualada">Direcció Igualada</option></select><div id="eta-display" class="hidden"></div></div><button id="chat-open-btn">Obrir Xat</button></div>
-        <div id="panel-reportar" class="hidden full-panel"><div class="centered-content"><button class="back-button" id="back-to-selection2">&larr; Tornar</button><h2>Col·labora</h2><p>Tria el sentit i prem el botó per compartir la teva ubicació.</p><select id="sentido-selector-reportar"><option value="Direcció Barcelona">Viatjo en direcció Barcelona</option><option value="Direcció Igualada">Viatjo en direcció Igualada</option></select><button id="report-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>Reportar Posició</button><div id="message-box"></div><p id="reminder-text" class="hidden reminder-text">Recorda tornar al menú principal quan baixis del bus.</p></div></div>
+        <div id="panel-ver" class="hidden full-panel"><div id="map"></div><div class="map-overlay"><button class="back-button" id="back-to-selection1">&larr;</button><p>Tria línia i sentit:</p><select id="linea-selector-ver"><option value="Igualada-Barcelona">Línia Igualada - Barcelona</option></select><select id="sentido-selector-ver"><option value="Direcció Barcelona">Direcció Barcelona</option><option value="Direcció Igualada">Direcció Igualada</option></select><div id="eta-display" class="hidden"></div></div><button id="chat-open-btn" class="rol-button">Obrir Xat de la Línia</button></div>
+        <div id="panel-reportar" class="hidden full-panel"><div class="centered-content"><button class="back-button" id="back-to-selection2">&larr;</button><h2>Col·labora</h2><p>Tria el sentit i prem el botó per compartir la teva ubicació.</p><select id="sentido-selector-reportar"><option value="Direcció Barcelona">Viatjo en direcció Barcelona</option><option value="Direcció Igualada">Viatjo en direcció Igualada</option></select><button id="report-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>Reportar Posició</button><div id="message-box"></div><p id="reminder-text" class="hidden reminder-text">Recorda tornar al menú principal quan baixis del bus.</p></div></div>
         
         <div id="chat-modal" class="hidden">
-            <div class="chat-header">
-                <h3 id="chat-title">Xat de la línia</h3>
-                <button id="chat-close-btn">&times;</button>
-            </div>
-            <div id="chat-messages-list">
-                </div>
-            <div class="chat-input-area">
-                <input type="text" id="chat-nickname" placeholder="El teu nom aleatori">
-                <input type="text" id="chat-message-input" placeholder="Escriu el teu missatge...">
-                <button id="chat-send-btn">Enviar</button>
-            </div>
+            <div class="chat-header"><h3 id="chat-title">Xat de la línia</h3><button id="chat-close-btn">&times;</button></div>
+            <div id="chat-messages-list"></div>
+            <div class="chat-input-area"><input type="text" id="chat-nickname" placeholder="El teu nom"><input type="text" id="chat-message-input" placeholder="Escriu un missatge..."><button id="chat-send-btn">Enviar</button></div>
         </div>
     </div>
     
@@ -72,21 +72,18 @@
             const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const VELOCITAT_MITJANA_BUS_KMH = 25;
 
-            const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelectorVer=document.getElementById("linea-selector-ver"),sentidoSelectorVer=document.getElementById("sentido-selector-ver"),sentidoSelectorReportar=document.getElementById("sentido-selector-reportar"),reportButton=document.getElementById("report-button"),messageBox=document.getElementById("message-box"),etaDisplay=document.getElementById("eta-display"),reminderText=document.getElementById("reminder-text");
-            // NOU: Elements del xat
-            const chatModal=document.getElementById("chat-modal"),chatOpenBtn=document.getElementById("chat-open-btn"),chatCloseBtn=document.getElementById("chat-close-btn"),chatTitle=document.getElementById("chat-title"),chatMessagesList=document.getElementById("chat-messages-list"),chatNicknameInput=document.getElementById("chat-nickname"),chatMessageInput=document.getElementById("chat-message-input"),chatSendBtn=document.getElementById("chat-send-btn");
-            
+            const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelectorVer=document.getElementById("linea-selector-ver"),sentidoSelectorVer=document.getElementById("sentido-selector-ver"),sentidoSelectorReportar=document.getElementById("sentido-selector-reportar"),reportButton=document.getElementById("report-button"),messageBox=document.getElementById("message-box"),etaDisplay=document.getElementById("eta-display"),reminderText=document.getElementById("reminder-text"),chatModal=document.getElementById("chat-modal"),chatOpenBtn=document.getElementById("chat-open-btn"),chatCloseBtn=document.getElementById("chat-close-btn"),chatTitle=document.getElementById("chat-title"),chatMessagesList=document.getElementById("chat-messages-list"),chatNicknameInput=document.getElementById("chat-nickname"),chatMessageInput=document.getElementById("chat-message-input"),chatSendBtn=document.getElementById("chat-send-btn");
             let map=null,busLayer=null,updateInterval=null,chatChannel=null;
 
-            const busIcon=L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/64/1168/1168598.png",iconSize:[38,38]});
+            // NOVA ICONA DE BUS!
+            const busIcon=L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/64/3024/3024523.png",iconSize:[38,38]});
             
-            // --- LÒGICA DE LA INTERFÍCIE ---
             function mostrarPanel(e){panelSeleccion.classList.add("hidden"),panelVer.classList.add("hidden"),panelReportar.classList.add("hidden"),e.classList.remove("hidden")}
             btnVerBus.addEventListener("click",()=>{mostrarPanel(panelVer),map||initMap(),actualizarMapa(),updateInterval||(updateInterval=setInterval(actualizarMapa,2e4))}),btnEstoyEnBus.addEventListener("click",()=>{reminderText.classList.add("hidden"),mostrarPanel(panelReportar)});
             function volverAlInicio(){if(updateInterval){clearInterval(updateInterval);updateInterval=null;} if(chatChannel){supabaseClient.removeChannel(chatChannel); chatChannel=null;} mostrarPanel(panelSeleccion)}
             btnBack1.addEventListener("click",volverAlInicio),btnBack2.addEventListener("click",volverAlInicio);
             
-            // --- LÒGICA DEL XAT ---
+            // Lògica del Xat
             function generarApodoAleatori(){const e=["Viatger","Passatgera","Observador","Explorador"],o=["Ràpid","Curiosa","Nocturn","Atent","Blau"];return e[Math.floor(Math.random()*e.length)]+" "+o[Math.floor(Math.random()*o.length)]}
             chatOpenBtn.addEventListener("click",()=>{chatNicknameInput.value||(chatNicknameInput.value=generarApodoAleatori()),chatTitle.textContent=`Xat: ${lineaSelectorVer.value} (${sentidoSelectorVer.value})`,carregarMissatges(),subscriureAlXat(),chatModal.classList.remove("hidden")});
             chatCloseBtn.addEventListener("click",()=>{chatModal.classList.add("hidden"),chatChannel&&(supabaseClient.removeChannel(chatChannel),chatChannel=null)});
@@ -99,7 +96,7 @@
             
             function afegirMissatgeAlXat(e){const o=document.createElement("div");o.className="chat-message",o.innerHTML=`<span class="apodo">${e.apodo}</span><span class="mensaje">${e.mensaje}</span>`,chatMessagesList.appendChild(o),chatMessagesList.scrollTop=chatMessagesList.scrollHeight}
 
-            // --- LÒGICA DEL MAPA I REPORT ---
+            // Lògica del Mapa
             function initMap(){map=L.map("map").setView([41.5,1.85],10),L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map),busLayer=L.layerGroup().addTo(map),setTimeout(()=>map.invalidateSize(),100)}
             reportButton.addEventListener("click",()=>{showMessage("Sol·licitant ubicació...","blue"),navigator.geolocation.getCurrentPosition(e=>{showMessage("Enviant el report...","blue");const{latitude:o,longitude:t}=e.coords,r=lineaSelectorVer.value,a=sentidoSelectorReportar.value;supabaseClient.from("bus_checkins").insert({linea_bus:r,lat:o,lon:t,sentit:a}).then(handleSupabaseResponse)},handleGeolocationError)});
             function handleSupabaseResponse({error:e}){e?showMessage("Error en enviar el report.","red"):(showMessage("Gràcies per la teva col·laboració!","green"),reminderText.classList.remove("hidden"))}
