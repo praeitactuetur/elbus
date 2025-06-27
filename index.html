@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>On està el bus!!!</title>
+    <title>On és el bus!!!</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { /* Paleta de colors i estils generals */
-            --color-primari: #005A9C; --color-secundari: #00BFFF; --color-fons: #f4f7f6;
-            --color-text: #333; --color-blanc: #ffffff; --color-perill: #d9534f;
+        :root {
+            --color-primari: #005A9C;
+            --color-secundari: #00BFFF;
+            --color-fons: #f4f7f6;
+            --color-text: #333;
+            --color-blanc: #ffffff;
+            --color-perill: #d9534f;
+            --color-avis: #f0ad4e;
             --ombra-suau: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--color-fons); }
@@ -23,21 +28,20 @@
         p { font-size: 1em; color: #666; text-align: center; max-width: 320px; line-height: 1.5; }
         .rol-button, .action-button { width: 100%; max-width: 340px; padding: 18px; font-size: 1.1em; font-weight: bold; color: var(--color-blanc); border: none; border-radius: 12px; cursor: pointer; margin-top: 15px; display: flex; align-items: center; justify-content: center; box-shadow: var(--ombra-suau); transition: transform 0.2s, background-color 0.2s; }
         .rol-button { background-color: var(--color-primari); }
-        #btn-start-sharing { background-color: #28a745; } /* Botó de començar en verd */
-        #btn-stop-sharing { background-color: var(--color-perill); } /* Botó de parar en vermell */
+        #btn-start-sharing { background-color: #28a745; }
+        #btn-stop-sharing { background-color: var(--color-perill); }
         .rol-button:hover, .action-button:hover { transform: translateY(-2px); }
         #btn-start-sharing:hover { background-color: #218838; }
         #btn-stop-sharing:hover { background-color: #c82333; }
-        .action-button svg { margin-right: 8px; }
         #map { height: 100%; width: 100%; background-color: #ddd; }
         .map-overlay { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 1000; background-color: var(--color-blanc); padding: 15px; border-radius: 12px; box-shadow: var(--ombra-suau); }
         select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 10px; background-color: #fff; }
-        .back-button { background: none; border: none; font-size: 1.5em; color: #aaa; cursor: pointer; position: absolute; top: 15px; left: 15px; z-index: 2001; transition: color 0.2s; padding: 5px; }
-        .back-button:hover { color: var(--color-text); }
+        .back-button { background: none; border: none; font-size: 1.5em; color: #aaa; cursor: pointer; position: absolute; top: 15px; left: 15px; z-index: 2001; }
         .centered-content .back-button { top: 20px; left: 20px; }
         #message-box { margin-top: 15px; font-size: 1em; font-weight: bold; min-height: 20px; }
         #eta-display { margin-top: 10px; padding: 12px; background-color: #e6f7ff; border-radius: 8px; text-align: center; font-weight: bold; color: var(--color-primari); }
-        .reminder-text { font-size: 0.8em; color: #e85d04; font-weight: bold; margin-top: 20px; }
+        .warning-box { background-color: #fff3cd; color: #664d03; border: 1px solid #ffecb5; padding: 15px; margin-top: 20px; border-radius: 8px; max-width: 340px; box-sizing: border-box; }
+        .warning-box strong { display: block; margin-bottom: 5px; }
         #chat-open-btn { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1000; background-color: var(--color-primari); width: auto; padding: 12px 25px; box-shadow: var(--ombra-suau); border-radius: 50px; }
         #chat-modal, .chat-header, .chat-input-area { display: flex; }
         #chat-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--color-fons); z-index: 3000; flex-direction: column; }
@@ -47,7 +51,7 @@
         #chat-messages-list { flex-grow: 1; overflow-y: auto; padding: 15px; }
         .chat-message { background-color: var(--color-blanc); padding: 10px 15px; border-radius: 18px; margin-bottom: 10px; max-width: 85%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); word-wrap: break-word; }
         .chat-message .apodo { font-weight: bold; color: var(--color-primari); display: block; margin-bottom: 4px; }
-        .chat-input-area { background-color: var(--color-blanc); padding: 10px; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); gap: 10px; align-items: center; }
+        .chat-input-area { background-color: var(--color-blanc); padding: 10px; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); display: flex; gap: 10px; align-items: center; }
         #chat-nickname, #chat-message-input { border: 1px solid #ddd; padding: 12px; border-radius: 20px; }
         #chat-nickname { flex-basis: 120px; }
         #chat-message-input { flex-grow: 1; }
@@ -77,6 +81,9 @@
                 <button id="btn-start-sharing" class="action-button">Començar a compartir</button>
                 <button id="btn-stop-sharing" class="action-button hidden">Deixar de compartir</button>
                 <div id="message-box"></div>
+                <div id="background-warning" class="warning-box hidden">
+                    <strong>ATENCIÓ:</strong> Perquè la compartició funcioni, has de mantenir aquesta pantalla oberta al navegador.
+                </div>
             </div>
         </div>
         <div id="chat-modal" class="hidden">
@@ -88,92 +95,45 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURACIÓ ---
             const SUPABASE_URL = 'https://thwtdhppssvcxtgdrmqc.supabase.co';
             const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod3RkaHBwc3N2Y3h0Z2RybXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NTIxOTgsImV4cCI6MjA2NjQyODE5OH0.x1Mv3qIMaiIQI3d7jy48a9bndaWBEbOxFn5LvWqihDI';
             const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const VELOCITAT_MITJANA_BUS_KMH = 50;
 
-            const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelectorVer=document.getElementById("linea-selector-ver"),sentidoSelectorVer=document.getElementById("sentido-selector-ver"),sentidoSelectorReportar=document.getElementById("sentido-selector-reportar"),messageBox=document.getElementById("message-box"),etaDisplay=document.getElementById("eta-display");
-            const btnStartSharing=document.getElementById("btn-start-sharing"),btnStopSharing=document.getElementById("btn-stop-sharing");
-            const chatModal=document.getElementById("chat-modal"),chatOpenBtn=document.getElementById("chat-open-btn"),chatCloseBtn=document.getElementById("chat-close-btn"),chatTitle=document.getElementById("chat-title"),chatMessagesList=document.getElementById("chat-messages-list"),chatNicknameInput=document.getElementById("chat-nickname"),chatMessageInput=document.getElementById("chat-message-input"),chatSendBtn=document.getElementById("chat-send-btn");
+            // --- Elements del DOM ---
+            const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelectorVer=document.getElementById("linea-selector-ver"),sentidoSelectorVer=document.getElementById("sentido-selector-ver"),sentidoSelectorReportar=document.getElementById("sentido-selector-reportar"),messageBox=document.getElementById("message-box"),etaDisplay=document.getElementById("eta-display"),btnStartSharing=document.getElementById("btn-start-sharing"),btnStopSharing=document.getElementById("btn-stop-sharing"),backgroundWarning=document.getElementById("background-warning"),chatModal=document.getElementById("chat-modal"),chatOpenBtn=document.getElementById("chat-open-btn"),chatCloseBtn=document.getElementById("chat-close-btn"),chatTitle=document.getElementById("chat-title"),chatMessagesList=document.getElementById("chat-messages-list"),chatNicknameInput=document.getElementById("chat-nickname"),chatMessageInput=document.getElementById("chat-message-input"),chatSendBtn=document.getElementById("chat-send-btn");
             
-            let map=null,busLayer=null,updateInterval=null,chatChannel=null;
-            let idIntervaloCompartir = null;
-            let idIntervaloNotificacion = null;
+            let map=null,busLayer=null,updateInterval=null,chatChannel=null,idIntervaloCompartir = null,idIntervaloNotificacion = null;
             
             const busIcon=L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/64/3024/3024523.png",iconSize:[38,38]});
             
+            // --- LÒGICA DE LA INTERFÍCIE ---
             function mostrarPanel(e){panelSeleccion.classList.add("hidden"),panelVer.classList.add("hidden"),panelReportar.classList.add("hidden"),e.classList.remove("hidden")}
             btnVerBus.addEventListener("click",()=>{mostrarPanel(panelVer),map||initMap(),actualizarMapa(),updateInterval||(updateInterval=setInterval(actualizarMapa,2e4))}),btnEstoyEnBus.addEventListener("click",()=>{mostrarPanel(panelReportar)});
-            function volverAlInicio(){pararDeCompartir(); if(updateInterval){clearInterval(updateInterval);updateInterval=null;} if(chatChannel){supabaseClient.removeChannel(chatChannel); chatChannel=null;} mostrarPanel(panelSeleccion)}
+            function volverAlInicio(){pararDeCompartir();if(updateInterval){clearInterval(updateInterval);updateInterval=null}if(chatChannel){supabaseClient.removeChannel(chatChannel);chatChannel=null}mostrarPanel(panelSeleccion)}
             btnBack1.addEventListener("click",volverAlInicio),btnBack2.addEventListener("click",volverAlInicio);
 
-            btnStartSharing.addEventListener('click', () => {
-                if ('Notification' in window) {
-                    Notification.requestPermission().then(permission => {
-                        if (permission === 'granted') {
-                            comenzarACompartir();
-                        } else {
-                            showMessage("Has rebutjat les notificacions. No rebràs recordatoris.", 'orange');
-                            comenzarACompartir();
-                        }
-                    });
-                } else {
-                    comenzarACompartir();
-                }
-            });
-            btnStopSharing.addEventListener('click', pararDeCompartir);
+            // --- LÒGICA DE COMPARTICIÓ I NOTIFICACIONS ---
+            btnStartSharing.addEventListener('click',()=>{if("Notification"in window)Notification.requestPermission().then(e=>{"granted"===e?comenzarACompartir():(showMessage("Has rebutjat les notificacions. No rebràs recordatoris.","orange"),comenzarACompartir())});else comenzarACompartir()});
+            btnStopSharing.addEventListener('click',pararDeCompartir);
 
-            function comenzarACompartir() {
-                if (idIntervaloCompartir) return;
-                enviarUbicacion();
-                idIntervaloCompartir = setInterval(enviarUbicacion, 30000);
-                idIntervaloNotificacion = setInterval(enviarNotificacionRecordatorio, 900000);
-                showMessage("Estàs compartint la teva ubicació...", 'green');
-                btnStartSharing.classList.add('hidden');
-                btnStopSharing.classList.remove('hidden');
-            }
-
-            function pararDeCompartir() {
-                if (!idIntervaloCompartir) return;
-                clearInterval(idIntervaloCompartir);
-                clearInterval(idIntervaloNotificacion);
-                idIntervaloCompartir = null;
-                idIntervaloNotificacion = null;
-                showMessage("Has deixat de compartir. Gràcies!", 'blue');
-                btnStopSharing.classList.add('hidden');
-                btnStartSharing.classList.remove('hidden');
-            }
-
-            function enviarUbicacion() {
-                if (!navigator.geolocation) return;
-                navigator.geolocation.getCurrentPosition(position => {
-                    const { latitude, longitude } = position.coords;
-                    const sentit = sentidoSelectorReportar.value;
-                    supabaseClient.from("bus_checkins").insert({ linea_bus: "Igualada-Barcelona", lat: latitude, lon: longitude, sentit: sentit }).then(({error}) => {
-                        if (error) console.error("Error en l'enviament periòdic:", error);
-                    });
-                });
-            }
-
-            function enviarNotificacionRecordatorio() {
-                if (Notification.permission === 'granted') {
-                    new Notification('On és el bus!!!', {
-                        body: 'Encara estàs compartint la teva ubicació. Recorda parar quan baixis!',
-                        icon: 'https://cdn-icons-png.flaticon.com/192/3024/3024523.png'
-                    });
-                }
-            }
+            function comenzarACompartir(){if(idIntervaloCompartir)return;enviarUbicacion(),idIntervaloCompartir=setInterval(enviarUbicacion,3e4),idIntervaloNotificacion=setInterval(enviarNotificacionRecordatorio,9e5),showMessage("Estàs compartint la teva ubicació...","green"),btnStartSharing.classList.add("hidden"),btnStopSharing.classList.remove("hidden"),backgroundWarning.classList.remove("hidden")}
+            function pararDeCompartir(){if(!idIntervaloCompartir)return;clearInterval(idIntervaloCompartir),clearInterval(idIntervaloNotificacion),idIntervaloCompartir=null,idIntervaloNotificacion=null,showMessage("Has deixat de compartir. Gràcies!","blue"),btnStopSharing.classList.add("hidden"),btnStartSharing.classList.remove("hidden"),backgroundWarning.classList.add("hidden")}
+            function enviarUbicacion(){navigator.geolocation&&navigator.geolocation.getCurrentPosition(e=>{const{latitude:o,longitude:t}=e.coords,n=sentidoSelectorReportar.value;supabaseClient.from("bus_checkins").insert({linea_bus:"Igualada-Barcelona",lat:o,lon:t,sentit:n}).then(({error:e})=>{e&&console.error("Error en l'enviament periòdic:",e)})})}
+            function enviarNotificacionRecordatorio(){"granted"===Notification.permission&&new Notification("On és el bus!!!",{body:"Encara estàs compartint la teva ubicació. Recorda parar quan baixis!",icon:"https://cdn-icons-png.flaticon.com/192/3024/3024523.png"})}
             
+            // --- LÒGICA DEL XAT ---
             function generarApodoAleatori(){const e=["Viatger","Passatgera","Observador","Explorador"],o=["Ràpid","Curiosa","Nocturn","Atent","Blau"];return e[Math.floor(Math.random()*e.length)]+" "+o[Math.floor(Math.random()*o.length)]}
             chatOpenBtn.addEventListener("click",()=>{chatNicknameInput.value||(chatNicknameInput.value=generarApodoAleatori()),chatTitle.textContent=`Xat: ${lineaSelectorVer.value} (${sentidoSelectorVer.value})`,carregarMissatges(),subscriureAlXat(),chatModal.classList.remove("hidden")});
             chatCloseBtn.addEventListener("click",()=>{chatModal.classList.add("hidden"),chatChannel&&(supabaseClient.removeChannel(chatChannel),chatChannel=null)});
             chatSendBtn.addEventListener("click",()=>{const e=chatNicknameInput.value.trim(),o=chatMessageInput.value.trim();if(!e||!o)return void alert("El nom i el missatge no poden estar buits.");supabaseClient.from("chat_messages").insert({linea_bus:lineaSelectorVer.value,sentido:sentidoSelectorVer.value,apodo:e,mensaje:o}).then(()=>{chatMessageInput.value="",chatMessageInput.focus()})});
             chatMessageInput.addEventListener("keypress",e=>{"Enter"===e.key&&chatSendBtn.click()});
             async function carregarMissatges(){chatMessagesList.innerHTML="<p>Carregant missatges...</p>";const e=lineaSelectorVer.value,o=sentidoSelectorVer.value;const{data:t,error:r}=await supabaseClient.from("chat_messages").select("*").eq("linea_bus",e).eq("sentido",o).order("created_at",{ascending:!1}).limit(50);r||!t?(chatMessagesList.innerHTML="<p>No s'han pogut carregar els missatges.</p>",console.error(r)):(chatMessagesList.innerHTML="",t.reverse().forEach(afegirMissatgeAlXat))}
-            function subscriureAlXat(){const e=lineaSelectorVer.value,o=sentidoSelectorVer.value;chatChannel&&supabaseClient.removeChannel(chatChannel),chatChannel=supabaseClient.channel(`chat_${e}_${o}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"chat_messages",filter:`linea_bus=eq.${e}`,filter:`sentido=eq.${o}`},e=>{afegirMissatgeAlXat(e.new)}).subscribe()}
+            function subscriureAlXat(){const e=lineaSelectorVer.value,o=sentidoSelectorVer.value;chatChannel&&supabaseClient.removeChannel(chatChannel),chatChannel=supabaseClient.channel(`chat_realtime`).on("postgres_changes",{event:"INSERT",schema:"public",table:"chat_messages",filter:`linea_bus=eq.${e}`,filter:`sentido=eq.${o}`},e=>{afegirMissatgeAlXat(e.new)}).subscribe()}
             function afegirMissatgeAlXat(e){const o=document.createElement("div");o.className="chat-message",o.innerHTML=`<span class="apodo">${e.apodo}</span><span class="mensaje">${e.mensaje}</span>`,chatMessagesList.appendChild(o),chatMessagesList.scrollTop=chatMessagesList.scrollHeight}
 
+            // --- LÒGICA DEL MAPA ---
             function initMap(){map=L.map("map").setView([41.5,1.85],10),L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map),busLayer=L.layerGroup().addTo(map),setTimeout(()=>map.invalidateSize(),100)}
             function showMessage(e,o){messageBox.textContent=e,messageBox.style.color=o,setTimeout(()=>{messageBox.textContent===e&&(messageBox.textContent="")},5e3)}
             async function actualizarMapa(){if(!map)return;try{const e=lineaSelectorVer.value,o=sentidoSelectorVer.value,t=new Date(Date.now()-6e5).toISOString();await supabaseClient.from("bus_checkins").delete().lt("created_at",t);const{data:r,error:a}=await supabaseClient.from("bus_checkins").select("lat, lon").eq("linea_bus",e).eq("sentit",o);if(a)throw a;busLayer.clearLayers(),r.forEach(e=>{L.marker([e.lat,e.lon],{icon:busIcon}).addTo(busLayer)}),calcularETAdinamic(r)}catch(e){console.error("Error en actualitzar el mapa:",e)}}
