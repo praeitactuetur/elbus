@@ -91,7 +91,7 @@
             const SUPABASE_URL = 'https://thwtdhppssvcxtgdrmqc.supabase.co';
             const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod3RkaHBwc3N2Y3h0Z2RybXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NTIxOTgsImV4cCI6MjA2NjQyODE5OH0.x1Mv3qIMaiIQI3d7jy48a9bndaWBEbOxFn5LvWqihDI';
             const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            const VELOCITAT_MITJANA_BUS_KMH = 25;
+            const VELOCITAT_MITJANA_BUS_KMH = 50;
 
             const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelectorVer=document.getElementById("linea-selector-ver"),sentidoSelectorVer=document.getElementById("sentido-selector-ver"),sentidoSelectorReportar=document.getElementById("sentido-selector-reportar"),messageBox=document.getElementById("message-box"),etaDisplay=document.getElementById("eta-display");
             const btnStartSharing=document.getElementById("btn-start-sharing"),btnStopSharing=document.getElementById("btn-stop-sharing");
@@ -158,7 +158,7 @@
 
             function enviarNotificacionRecordatorio() {
                 if (Notification.permission === 'granted') {
-                    new Notification('On està el bus!!!', {
+                    new Notification('On és el bus!!!', {
                         body: 'Encara estàs compartint la teva ubicació. Recorda parar quan baixis!',
                         icon: 'https://cdn-icons-png.flaticon.com/192/3024/3024523.png'
                     });
