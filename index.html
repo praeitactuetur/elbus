@@ -1,146 +1,826 @@
 <!DOCTYPE html>
 <html lang="ca">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>On és el bus!!!</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root {
-            --color-primari: #005A9C;
-            --color-secundari: #00BFFF;
-            --color-fons: #f4f7f6;
-            --color-text: #333;
-            --color-blanc: #ffffff;
-            --color-perill: #d9534f;
-            --color-avis: #f0ad4e;
-            --ombra-suau: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--color-fons); }
-        #app-container { height: 100%; width: 100%; position: relative; }
-        #panel-seleccion, .centered-content { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding: 20px; box-sizing: border-box; }
-        .full-panel { height: 100%; width: 100%; position: absolute; top: 0; left: 0; background-color: var(--color-fons); }
-        .hidden { display: none !important; }
-        h1, h2, h3 { color: var(--color-text); text-align: center; font-weight: 700; }
-        h1 { font-size: 2.5em; margin: 0 0 10px 0; } h2 { font-size: 1.8em; margin: 0 0 10px 0; }
-        p { font-size: 1em; color: #666; text-align: center; max-width: 320px; line-height: 1.5; }
-        .rol-button, .action-button { width: 100%; max-width: 340px; padding: 18px; font-size: 1.1em; font-weight: bold; color: var(--color-blanc); border: none; border-radius: 12px; cursor: pointer; margin-top: 15px; display: flex; align-items: center; justify-content: center; box-shadow: var(--ombra-suau); transition: transform 0.2s, background-color 0.2s; }
-        .rol-button { background-color: var(--color-primari); }
-        #btn-start-sharing { background-color: #28a745; }
-        #btn-stop-sharing { background-color: var(--color-perill); }
-        .rol-button:hover, .action-button:hover { transform: translateY(-2px); }
-        #btn-start-sharing:hover { background-color: #218838; }
-        #btn-stop-sharing:hover { background-color: #c82333; }
-        #map { height: 100%; width: 100%; background-color: #ddd; }
-        .map-overlay { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 1000; background-color: var(--color-blanc); padding: 15px; border-radius: 12px; box-shadow: var(--ombra-suau); }
-        select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 10px; background-color: #fff; }
-        .back-button { background: none; border: none; font-size: 1.5em; color: #aaa; cursor: pointer; position: absolute; top: 15px; left: 15px; z-index: 2001; }
-        .centered-content .back-button { top: 20px; left: 20px; }
-        #message-box { margin-top: 15px; font-size: 1em; font-weight: bold; min-height: 20px; }
-        #eta-display { margin-top: 10px; padding: 12px; background-color: #e6f7ff; border-radius: 8px; text-align: center; font-weight: bold; color: var(--color-primari); }
-        .warning-box { background-color: #fff3cd; color: #664d03; border: 1px solid #ffecb5; padding: 15px; margin-top: 20px; border-radius: 8px; max-width: 340px; box-sizing: border-box; }
-        .warning-box strong { display: block; margin-bottom: 5px; }
-        #chat-open-btn { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1000; background-color: var(--color-primari); width: auto; padding: 12px 25px; box-shadow: var(--ombra-suau); border-radius: 50px; }
-        #chat-modal, .chat-header, .chat-input-area { display: flex; }
-        #chat-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--color-fons); z-index: 3000; flex-direction: column; }
-        .chat-header { background-color: var(--color-blanc); padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; }
-        .chat-header h3 { margin: 0; font-size: 1.2em; }
-        #chat-close-btn { position: absolute; top: 50%; right: 15px; transform: translateY(-50%); font-size: 2em; background: none; border: none; color: #aaa; cursor: pointer; padding: 5px; line-height: 1; }
-        #chat-messages-list { flex-grow: 1; overflow-y: auto; padding: 15px; }
-        .chat-message { background-color: var(--color-blanc); padding: 10px 15px; border-radius: 18px; margin-bottom: 10px; max-width: 85%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); word-wrap: break-word; }
-        .chat-message .apodo { font-weight: bold; color: var(--color-primari); display: block; margin-bottom: 4px; }
-        .chat-input-area { background-color: var(--color-blanc); padding: 10px; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); display: flex; gap: 10px; align-items: center; }
-        #chat-nickname, #chat-message-input { border: 1px solid #ddd; padding: 12px; border-radius: 20px; }
-        #chat-nickname { flex-basis: 120px; }
-        #chat-message-input { flex-grow: 1; }
-        #chat-send-btn { padding: 12px; margin-top: 0; border-radius: 20px; flex-shrink: 0; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>On és el bus?</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#005A9C">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="On és el bus?">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+
+  <!-- Meta -->
+  <meta name="description" content="Seguiment col·laboratiu i anònim del bus Igualada-Barcelona (Monbus)">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --blau: #005A9C;
+      --blau-clar: #e8f0f9;
+      --verd: #198754;
+      --vermell: #d9534f;
+      --taronja: #f0ad4e;
+      --gris-fons: #f4f7f6;
+      --blanc: #fff;
+      --text: #1a1a2e;
+      --text-suau: #6b7280;
+      --ombra: 0 4px 20px rgba(0,0,0,0.12);
+      --radi: 14px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body, html {
+      height: 100%; width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gris-fons);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app { height: 100%; width: 100%; position: relative; overflow: hidden; }
+
+    /* ---- PANELLS ---- */
+    .panel {
+      height: 100%; width: 100%;
+      position: absolute; top: 0; left: 0;
+      display: flex; flex-direction: column;
+      transition: opacity .25s, transform .25s;
+    }
+    .panel.hidden { opacity: 0; pointer-events: none; transform: translateY(8px); }
+
+    /* ---- PANTALLA INICIAL ---- */
+    #screen-home {
+      justify-content: center; align-items: center;
+      padding: 30px 24px; gap: 0;
+    }
+    .home-logo { font-size: 3.5rem; margin-bottom: 8px; }
+    .home-title { font-size: 1.9rem; font-weight: 800; color: var(--blau); text-align: center; line-height: 1.2; }
+    .home-subtitle { margin-top: 8px; color: var(--text-suau); text-align: center; font-size: 0.95rem; max-width: 300px; line-height: 1.5; }
+    .home-badge {
+      margin-top: 18px; margin-bottom: 28px;
+      background: var(--blau-clar); color: var(--blau);
+      padding: 6px 14px; border-radius: 30px;
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.03em;
+    }
+    .home-buttons { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 14px; }
+    .btn-home {
+      width: 100%; padding: 18px 20px;
+      border: none; border-radius: var(--radi);
+      font-size: 1.05rem; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; gap: 14px;
+      box-shadow: var(--ombra); transition: transform .15s, box-shadow .15s;
+      text-align: left; color: var(--blanc);
+    }
+    .btn-home:active { transform: scale(0.97); }
+    .btn-home-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .btn-home-text { display: flex; flex-direction: column; gap: 2px; }
+    .btn-home-text span:last-child { font-size: 0.78rem; font-weight: 400; opacity: 0.85; }
+    #btn-veure { background: var(--blau); }
+    #btn-compartir { background: var(--verd); }
+
+    .home-privacy {
+      margin-top: 24px; color: var(--text-suau);
+      font-size: 0.75rem; text-align: center; max-width: 300px; line-height: 1.6;
+    }
+
+    /* ---- HEADER COMÚ ---- */
+    .screen-header {
+      background: var(--blanc);
+      padding: 14px 16px 12px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      flex-shrink: 0; z-index: 10;
+    }
+    .btn-back {
+      background: none; border: none; cursor: pointer;
+      font-size: 1.4rem; color: var(--blau); padding: 4px; line-height: 1;
+    }
+    .header-title { font-size: 1.1rem; font-weight: 700; color: var(--text); flex: 1; }
+
+    /* ---- SELECTOR COMÚ ---- */
+    .selector-row { display: flex; gap: 8px; }
+    select {
+      flex: 1; padding: 10px 12px;
+      border: 1.5px solid #d1d5db; border-radius: 10px;
+      background: var(--blanc); font-size: 0.92rem; color: var(--text);
+      appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' fill='none' stroke-width='2'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
+      cursor: pointer;
+    }
+
+    /* ---- PANTALLA VEURE ---- */
+    #screen-veure { flex-direction: column; }
+    #screen-veure .screen-header { position: relative; }
+    .veure-controls {
+      background: var(--blanc);
+      padding: 12px 16px 14px;
+      flex-shrink: 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    #map { flex: 1; z-index: 1; }
+
+    #eta-card {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 500;
+      background: var(--blanc);
+      border-radius: var(--radi) var(--radi) 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+      padding: 16px 20px 24px;
+      transform: translateY(100%);
+      transition: transform .3s ease;
+    }
+    #eta-card.visible { transform: translateY(0); }
+    #eta-card.estat-esperant { border-top: 4px solid var(--verd); }
+    #eta-card.estat-passat   { border-top: 4px solid var(--vermell); }
+    #eta-card.estat-buit     { border-top: 4px solid var(--text-suau); }
+    .eta-icon { font-size: 2rem; }
+    .eta-titol { font-size: 1.2rem; font-weight: 800; color: var(--text); }
+    .eta-subtitol { font-size: 0.88rem; color: var(--text-suau); margin-top: 4px; }
+    .eta-row { display: flex; align-items: center; gap: 14px; }
+
+    #btn-chat-flotant {
+      position: absolute; bottom: 90px; right: 16px; z-index: 499;
+      background: var(--blau); color: var(--blanc);
+      border: none; border-radius: 50px; cursor: pointer;
+      padding: 12px 18px; font-size: 0.9rem; font-weight: 700;
+      box-shadow: var(--ombra); display: flex; align-items: center; gap: 8px;
+      transition: transform .15s;
+    }
+    #btn-chat-flotant.hidden { display: none; }
+    #btn-chat-flotant:active { transform: scale(0.95); }
+
+    /* ---- PANTALLA COMPARTIR ---- */
+    #screen-compartir {
+      justify-content: flex-start;
+      background: var(--gris-fons);
+    }
+    .compartir-body {
+      flex: 1; display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 24px;
+    }
+    .compartir-card {
+      background: var(--blanc); border-radius: var(--radi);
+      box-shadow: var(--ombra); padding: 28px 24px;
+      width: 100%; max-width: 380px;
+    }
+    .compartir-card h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
+    .compartir-card p { font-size: 0.88rem; color: var(--text-suau); line-height: 1.5; margin-bottom: 18px; }
+    .btn-accio {
+      width: 100%; padding: 16px;
+      border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 700; cursor: pointer; color: var(--blanc);
+      box-shadow: var(--ombra); transition: transform .15s, background .15s;
+      margin-top: 10px;
+    }
+    .btn-accio:active { transform: scale(0.97); }
+    .btn-accio.verd { background: var(--verd); }
+    .btn-accio.vermell { background: var(--vermell); }
+    .btn-accio.disabled { background: #9ca3af; cursor: not-allowed; }
+
+    .estat-sharing {
+      margin-top: 20px; padding: 16px;
+      background: #d1fae5; border-radius: 10px;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .estat-sharing.hidden { display: none; }
+    .pulsing-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--verd); flex-shrink: 0; margin-top: 3px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .5; transform: scale(1.3); }
+    }
+    .estat-sharing p { font-size: 0.85rem; color: #065f46; margin: 0; line-height: 1.5; }
+
+    .avis-pantalla {
+      margin-top: 16px; padding: 14px;
+      background: #fff7ed; border-radius: 10px; border: 1px solid #fed7aa;
+    }
+    .avis-pantalla.hidden { display: none; }
+    .avis-pantalla p { font-size: 0.82rem; color: #92400e; margin: 0; line-height: 1.5; }
+
+    /* ---- MODAL XAT ---- */
+    #modal-xat {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--gris-fons); z-index: 3000;
+      display: flex; flex-direction: column;
+    }
+    #modal-xat.hidden { display: none; }
+    .xat-header {
+      background: var(--blanc); padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .xat-header h3 { flex: 1; font-size: 1.05rem; }
+    #xat-missatges {
+      flex: 1; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .missatge-xat {
+      background: var(--blanc); padding: 10px 14px;
+      border-radius: 14px; max-width: 85%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .missatge-xat .apodo { font-weight: 700; color: var(--blau); font-size: 0.82rem; margin-bottom: 4px; }
+    .missatge-xat .text  { font-size: 0.9rem; word-break: break-word; }
+    .xat-input-area {
+      background: var(--blanc); padding: 10px 14px 20px;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    #xat-nom { flex-basis: 110px; padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 20px; font-size: 0.88rem; }
+    #xat-text { flex: 1; padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 20px; font-size: 0.88rem; }
+    #xat-enviar {
+      background: var(--blau); color: var(--blanc);
+      border: none; border-radius: 50%; width: 42px; height: 42px;
+      flex-shrink: 0; cursor: pointer; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ---- BANNER INSTAL·LACIÓ ---- */
+    #banner-install {
+      position: fixed; bottom: 16px; left: 16px; right: 16px; z-index: 9999;
+      background: var(--blau); color: var(--blanc);
+      border-radius: var(--radi); padding: 16px 18px;
+      box-shadow: var(--ombra);
+      display: flex; align-items: center; gap: 14px;
+    }
+    #banner-install.hidden { display: none; }
+    #banner-install p { flex: 1; font-size: 0.88rem; line-height: 1.4; }
+    #btn-install { background: var(--blanc); color: var(--blau); border: none; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: 0.88rem; cursor: pointer; flex-shrink: 0; }
+    #btn-install-close { background: none; border: none; color: rgba(255,255,255,0.7); font-size: 1.3rem; cursor: pointer; flex-shrink: 0; }
+  </style>
 </head>
 <body>
-    <div id="app-container">
-        <div id="panel-seleccion"><h1>On és el bus!!!</h1><p>Una forma col·laborativa de veure el teu bus.</p><button id="btn-ver-bus" class="rol-button">VEURE ON ÉS EL MEU BUS</button><button id="btn-estoy-en-bus" class="rol-button">ESTIC AL BUS (COMPARTIR)</button></div>
-        <div id="panel-ver" class="hidden full-panel">
-            <div id="map"></div>
-            <div class="map-overlay">
-                <button class="back-button" id="back-to-selection1">&larr;</button>
-                <p>Tria línia i sentit:</p>
-                <select id="linea-selector-ver"><option value="Igualada-Barcelona">Línia Igualada - Barcelona</option></select>
-                <select id="sentido-selector-ver"><option value="Direcció Barcelona">Direcció Barcelona</option><option value="Direcció Igualada">Direcció Igualada</option></select>
-                <div id="eta-display" class="hidden"></div>
-            </div>
-            <button id="chat-open-btn" class="rol-button">Obrir Xat de la Línia</button>
-        </div>
-        <div id="panel-reportar" class="hidden full-panel">
-            <div class="centered-content">
-                <button class="back-button" id="back-to-selection2">&larr;</button>
-                <h2>Compartir Ubicació</h2>
-                <p>Tria el sentit i comença a compartir per ajudar altres usuaris.</p>
-                <select id="sentido-selector-reportar"><option value="Direcció Barcelona">Viatjo en direcció Barcelona</option><option value="Direcció Igualada">Viatjo en direcció Igualada</option></select>
-                <button id="btn-start-sharing" class="action-button">Començar a compartir</button>
-                <button id="btn-stop-sharing" class="action-button hidden">Deixar de compartir</button>
-                <div id="message-box"></div>
-                <div id="background-warning" class="warning-box hidden">
-                    <strong>ATENCIÓ:</strong> Perquè la compartició funcioni, has de mantenir aquesta pantalla oberta al navegador.
-                </div>
-            </div>
-        </div>
-        <div id="chat-modal" class="hidden">
-            <div class="chat-header"><h3 id="chat-title">Xat de la línia</h3><button id="chat-close-btn">&times;</button></div>
-            <div id="chat-messages-list"></div>
-            <div class="chat-input-area"><input type="text" id="chat-nickname" placeholder="El teu nom"><input type="text" id="chat-message-input" placeholder="Escriu un missatge..."><button id="chat-send-btn" class="action-button">Enviar</button></div>
-        </div>
+<div id="app">
+
+  <!-- PANTALLA INICIAL -->
+  <div id="screen-home" class="panel">
+    <div class="home-logo">🚌</div>
+    <div class="home-title">On és el bus?</div>
+    <p class="home-subtitle">Seguiment col·laboratiu de la línia Igualada · Barcelona</p>
+    <div class="home-badge">🔒 100% anònim · Monbus / Hispano Igualadina</div>
+    <div class="home-buttons">
+      <button id="btn-veure" class="btn-home">
+        <span class="btn-home-icon">🗺️</span>
+        <span class="btn-home-text">
+          <span>Estic esperant el bus</span>
+          <span>Veure on és i quan arribarà</span>
+        </span>
+      </button>
+      <button id="btn-compartir" class="btn-home">
+        <span class="btn-home-icon">📍</span>
+        <span class="btn-home-text">
+          <span>Estic al bus</span>
+          <span>Compartir la meva ubicació</span>
+        </span>
+      </button>
     </div>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- CONFIGURACIÓ ---
-            const SUPABASE_URL = 'https://thwtdhppssvcxtgdrmqc.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod3RkaHBwc3N2Y3h0Z2RybXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NTIxOTgsImV4cCI6MjA2NjQyODE5OH0.x1Mv3qIMaiIQI3d7jy48a9bndaWBEbOxFn5LvWqihDI';
-            const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            const VELOCITAT_MITJANA_BUS_KMH = 50;
+    <p class="home-privacy">No es guarda cap dada personal. Només coordenades anònimes que s'eliminen soles als 10 minuts.</p>
+  </div>
 
-            // --- Elements del DOM ---
-            const panelSeleccion=document.getElementById("panel-seleccion"),panelVer=document.getElementById("panel-ver"),panelReportar=document.getElementById("panel-reportar"),btnVerBus=document.getElementById("btn-ver-bus"),btnEstoyEnBus=document.getElementById("btn-estoy-en-bus"),btnBack1=document.getElementById("back-to-selection1"),btnBack2=document.getElementById("back-to-selection2"),lineaSelectorVer=document.getElementById("linea-selector-ver"),sentidoSelectorVer=document.getElementById("sentido-selector-ver"),sentidoSelectorReportar=document.getElementById("sentido-selector-reportar"),messageBox=document.getElementById("message-box"),etaDisplay=document.getElementById("eta-display"),btnStartSharing=document.getElementById("btn-start-sharing"),btnStopSharing=document.getElementById("btn-stop-sharing"),backgroundWarning=document.getElementById("background-warning"),chatModal=document.getElementById("chat-modal"),chatOpenBtn=document.getElementById("chat-open-btn"),chatCloseBtn=document.getElementById("chat-close-btn"),chatTitle=document.getElementById("chat-title"),chatMessagesList=document.getElementById("chat-messages-list"),chatNicknameInput=document.getElementById("chat-nickname"),chatMessageInput=document.getElementById("chat-message-input"),chatSendBtn=document.getElementById("chat-send-btn");
-            
-            let map=null,busLayer=null,updateInterval=null,chatChannel=null,idIntervaloCompartir = null,idIntervaloNotificacion = null;
-            
-            const busIcon=L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/64/3024/3024523.png",iconSize:[38,38]});
-            
-            // --- LÒGICA DE LA INTERFÍCIE ---
-            function mostrarPanel(e){panelSeleccion.classList.add("hidden"),panelVer.classList.add("hidden"),panelReportar.classList.add("hidden"),e.classList.remove("hidden")}
-            btnVerBus.addEventListener("click",()=>{mostrarPanel(panelVer),map||initMap(),actualizarMapa(),updateInterval||(updateInterval=setInterval(actualizarMapa,2e4))}),btnEstoyEnBus.addEventListener("click",()=>{mostrarPanel(panelReportar)});
-            function volverAlInicio(){pararDeCompartir();if(updateInterval){clearInterval(updateInterval);updateInterval=null}if(chatChannel){supabaseClient.removeChannel(chatChannel);chatChannel=null}mostrarPanel(panelSeleccion)}
-            btnBack1.addEventListener("click",volverAlInicio),btnBack2.addEventListener("click",volverAlInicio);
+  <!-- PANTALLA VEURE -->
+  <div id="screen-veure" class="panel hidden">
+    <div class="screen-header">
+      <button class="btn-back" id="back-veure">←</button>
+      <span class="header-title">On és el bus?</span>
+    </div>
+    <div class="veure-controls">
+      <div class="selector-row">
+        <select id="sel-sentit-veure">
+          <option value="BCN">Direcció Barcelona →</option>
+          <option value="IGA">← Direcció Igualada</option>
+        </select>
+        <select id="sel-parada">
+          <option value="">La meva parada...</option>
+        </select>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div id="eta-card">
+      <div class="eta-row">
+        <div class="eta-icon" id="eta-icon">🚌</div>
+        <div>
+          <div class="eta-titol" id="eta-titol">Carregant...</div>
+          <div class="eta-subtitol" id="eta-subtitol">Actualitzant cada 20 segons</div>
+        </div>
+      </div>
+    </div>
+    <button id="btn-chat-flotant">💬 Xat de la línia</button>
+  </div>
 
-            // --- LÒGICA DE COMPARTICIÓ I NOTIFICACIONS ---
-            btnStartSharing.addEventListener('click',()=>{if("Notification"in window)Notification.requestPermission().then(e=>{"granted"===e?comenzarACompartir():(showMessage("Has rebutjat les notificacions. No rebràs recordatoris.","orange"),comenzarACompartir())});else comenzarACompartir()});
-            btnStopSharing.addEventListener('click',pararDeCompartir);
+  <!-- PANTALLA COMPARTIR -->
+  <div id="screen-compartir" class="panel hidden">
+    <div class="screen-header">
+      <button class="btn-back" id="back-compartir">←</button>
+      <span class="header-title">Compartir ubicació</span>
+    </div>
+    <div class="compartir-body">
+      <div class="compartir-card">
+        <h2>Gràcies per ajudar! 🙌</h2>
+        <p>Tria el sentit del teu viatge i comença a compartir. Pots parar en qualsevol moment.</p>
+        <select id="sel-sentit-compartir">
+          <option value="BCN">Viatjo cap a Barcelona →</option>
+          <option value="IGA">← Viatjo cap a Igualada</option>
+        </select>
+        <button id="btn-start" class="btn-accio verd">Començar a compartir 📍</button>
+        <button id="btn-stop" class="btn-accio vermell hidden">Deixar de compartir ✋</button>
+        <div id="estat-sharing" class="estat-sharing hidden">
+          <div class="pulsing-dot"></div>
+          <p id="missatge-sharing">Compartint ubicació...</p>
+        </div>
+        <div id="avis-pantalla" class="avis-pantalla hidden">
+          <p>⚠️ Mantén la pantalla oberta mentre viatges. Quan baixis del bus, prem "Deixar de compartir".</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            function comenzarACompartir(){if(idIntervaloCompartir)return;enviarUbicacion(),idIntervaloCompartir=setInterval(enviarUbicacion,3e4),idIntervaloNotificacion=setInterval(enviarNotificacionRecordatorio,9e5),showMessage("Estàs compartint la teva ubicació...","green"),btnStartSharing.classList.add("hidden"),btnStopSharing.classList.remove("hidden"),backgroundWarning.classList.remove("hidden")}
-            function pararDeCompartir(){if(!idIntervaloCompartir)return;clearInterval(idIntervaloCompartir),clearInterval(idIntervaloNotificacion),idIntervaloCompartir=null,idIntervaloNotificacion=null,showMessage("Has deixat de compartir. Gràcies!","blue"),btnStopSharing.classList.add("hidden"),btnStartSharing.classList.remove("hidden"),backgroundWarning.classList.add("hidden")}
-            function enviarUbicacion(){navigator.geolocation&&navigator.geolocation.getCurrentPosition(e=>{const{latitude:o,longitude:t}=e.coords,n=sentidoSelectorReportar.value;supabaseClient.from("bus_checkins").insert({linea_bus:"Igualada-Barcelona",lat:o,lon:t,sentit:n}).then(({error:e})=>{e&&console.error("Error en l'enviament periòdic:",e)})})}
-            function enviarNotificacionRecordatorio(){"granted"===Notification.permission&&new Notification("On és el bus!!!",{body:"Encara estàs compartint la teva ubicació. Recorda parar quan baixis!",icon:"https://cdn-icons-png.flaticon.com/192/3024/3024523.png"})}
-            
-            // --- LÒGICA DEL XAT ---
-            function generarApodoAleatori(){const e=["Viatger","Passatgera","Observador","Explorador"],o=["Ràpid","Curiosa","Nocturn","Atent","Blau"];return e[Math.floor(Math.random()*e.length)]+" "+o[Math.floor(Math.random()*o.length)]}
-            chatOpenBtn.addEventListener("click",()=>{chatNicknameInput.value||(chatNicknameInput.value=generarApodoAleatori()),chatTitle.textContent=`Xat: ${lineaSelectorVer.value} (${sentidoSelectorVer.value})`,carregarMissatges(),subscriureAlXat(),chatModal.classList.remove("hidden")});
-            chatCloseBtn.addEventListener("click",()=>{chatModal.classList.add("hidden"),chatChannel&&(supabaseClient.removeChannel(chatChannel),chatChannel=null)});
-            chatSendBtn.addEventListener("click",()=>{const e=chatNicknameInput.value.trim(),o=chatMessageInput.value.trim();if(!e||!o)return void alert("El nom i el missatge no poden estar buits.");supabaseClient.from("chat_messages").insert({linea_bus:lineaSelectorVer.value,sentido:sentidoSelectorVer.value,apodo:e,mensaje:o}).then(()=>{chatMessageInput.value="",chatMessageInput.focus()})});
-            chatMessageInput.addEventListener("keypress",e=>{"Enter"===e.key&&chatSendBtn.click()});
-            async function carregarMissatges(){chatMessagesList.innerHTML="<p>Carregant missatges...</p>";const e=lineaSelectorVer.value,o=sentidoSelectorVer.value;const{data:t,error:r}=await supabaseClient.from("chat_messages").select("*").eq("linea_bus",e).eq("sentido",o).order("created_at",{ascending:!1}).limit(50);r||!t?(chatMessagesList.innerHTML="<p>No s'han pogut carregar els missatges.</p>",console.error(r)):(chatMessagesList.innerHTML="",t.reverse().forEach(afegirMissatgeAlXat))}
-            function subscriureAlXat(){const e=lineaSelectorVer.value,o=sentidoSelectorVer.value;chatChannel&&supabaseClient.removeChannel(chatChannel),chatChannel=supabaseClient.channel(`chat_realtime`).on("postgres_changes",{event:"INSERT",schema:"public",table:"chat_messages",filter:`linea_bus=eq.${e}`,filter:`sentido=eq.${o}`},e=>{afegirMissatgeAlXat(e.new)}).subscribe()}
-            function afegirMissatgeAlXat(e){const o=document.createElement("div");o.className="chat-message",o.innerHTML=`<span class="apodo">${e.apodo}</span><span class="mensaje">${e.mensaje}</span>`,chatMessagesList.appendChild(o),chatMessagesList.scrollTop=chatMessagesList.scrollHeight}
+  <!-- MODAL XAT -->
+  <div id="modal-xat" class="hidden">
+    <div class="xat-header">
+      <button class="btn-back" id="xat-tancar">←</button>
+      <h3>💬 Xat de la línia</h3>
+    </div>
+    <div id="xat-missatges"></div>
+    <div class="xat-input-area">
+      <input type="text" id="xat-nom" placeholder="El teu nom" maxlength="20">
+      <input type="text" id="xat-text" placeholder="Escriu un missatge..." maxlength="200">
+      <button id="xat-enviar">➤</button>
+    </div>
+  </div>
 
-            // --- LÒGICA DEL MAPA ---
-            function initMap(){map=L.map("map").setView([41.5,1.85],10),L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map),busLayer=L.layerGroup().addTo(map),setTimeout(()=>map.invalidateSize(),100)}
-            function showMessage(e,o){messageBox.textContent=e,messageBox.style.color=o,setTimeout(()=>{messageBox.textContent===e&&(messageBox.textContent="")},5e3)}
-            async function actualizarMapa(){if(!map)return;try{const e=lineaSelectorVer.value,o=sentidoSelectorVer.value,t=new Date(Date.now()-6e5).toISOString();await supabaseClient.from("bus_checkins").delete().lt("created_at",t);const{data:r,error:a}=await supabaseClient.from("bus_checkins").select("lat, lon").eq("linea_bus",e).eq("sentit",o);if(a)throw a;busLayer.clearLayers(),r.forEach(e=>{L.marker([e.lat,e.lon],{icon:busIcon}).addTo(busLayer)}),calcularETAdinamic(r)}catch(e){console.error("Error en actualitzar el mapa:",e)}}
-            function calcularETAdinamic(e){e.length===0?(etaDisplay.textContent="No hi ha busos actius per aquest sentit.",etaDisplay.classList.remove("hidden")):navigator.geolocation.getCurrentPosition(o=>{const t=o.coords.latitude,r=o.coords.longitude;let a=1/0;e.forEach(e=>{const o=calcularDistancia(t,r,e.lat,e.lon);o<a&&(a=o)});const n=a/VELOCITAT_MITJANA_BUS_KMH*60;etaDisplay.textContent=`El bus més proper arribarà en uns ${Math.round(n)} minuts.`,etaDisplay.classList.remove("hidden")},()=>{etaDisplay.textContent="Activa la localització per calcular el temps d'arribada.",etaDisplay.classList.remove("hidden")})}
-            function calcularDistancia(e,o,t,r){const n=6371,a=(t-e)*Math.PI/180,s=(r-o)*Math.PI/180,i=Math.sin(a/2)*Math.sin(a/2)+Math.cos(e*Math.PI/180)*Math.cos(t*Math.PI/180)*Math.sin(s/2)*Math.sin(s/2),l=2*Math.atan2(Math.sqrt(i),Math.sqrt(1-i));return n*l}
-            [lineaSelectorVer,sentidoSelectorVer].forEach(e=>e.addEventListener("change",actualizarMapa));
-        });
-    </script>
+  <!-- BANNER INSTAL·LACIÓ PWA -->
+  <div id="banner-install" class="hidden">
+    <p>Instal·la l'app per accés ràpid des de la pantalla d'inici 📲</p>
+    <button id="btn-install">Instal·la</button>
+    <button id="btn-install-close">✕</button>
+  </div>
+
+</div>
+
+<script>
+// =============================================
+//  CONFIGURACIÓ
+// =============================================
+const SUPABASE_URL = 'https://thwtdhppssvcxtgdrmqc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod3RkaHBwc3N2Y3h0Z2RybXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NTIxOTgsImV4cCI6MjA2NjQyODE5OH0.x1Mv3qIMaiIQI3d7jy48a9bndaWBEbOxFn5LvWqihDI';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const VEL_KMH = 55; // velocitat mitjana estimada bus autopista
+
+// =============================================
+//  RUTA: punts de la ruta Igualada → Barcelona
+//  Usats per calcular si el bus ja ha passat o
+//  encara no ha arribat a la parada de l'usuari
+// =============================================
+const RUTA_IGA_BCN = [
+  { nom: 'Igualada',              lat: 41.5743, lng: 1.6186 },
+  { nom: 'Vilanova del Camí',     lat: 41.5657, lng: 1.6351 },
+  { nom: 'Santa Margarida de Montbui', lat: 41.5560, lng: 1.6572 },
+  { nom: 'Piera',                 lat: 41.5220, lng: 1.7544 },
+  { nom: 'Masquefa',              lat: 41.4980, lng: 1.8182 },
+  { nom: 'Martorell',             lat: 41.4726, lng: 1.9316 },
+  { nom: 'Molins de Rei',         lat: 41.4137, lng: 2.0173 },
+  { nom: 'Sant Feliu de Llobregat', lat: 41.3832, lng: 2.0431 },
+  { nom: "L'Hospitalet de Llobregat", lat: 41.3600, lng: 2.0997 },
+  { nom: 'Barcelona - Urgell',    lat: 41.3837, lng: 2.1497 },
+  { nom: 'Barcelona - Pg. Gràcia',lat: 41.3924, lng: 2.1649 },
+  { nom: 'Barcelona Nord',        lat: 41.3928, lng: 2.1804 },
+];
+
+// La mateixa ruta al revés per IGA
+const RUTA_BCN_IGA = [...RUTA_IGA_BCN].reverse().map(p => ({ ...p }));
+
+function getRuta(sentit) {
+  return sentit === 'BCN' ? RUTA_IGA_BCN : RUTA_BCN_IGA;
+}
+
+// =============================================
+//  CÀLCUL DISTÀNCIA HAVERSINE
+// =============================================
+function distKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Retorna la posició acumulada (km des de l'inici) del punt més proper de la ruta
+function posicioEnRuta(lat, lng, ruta) {
+  let minDist = Infinity, minIdx = 0;
+  ruta.forEach((p, i) => {
+    const d = distKm(lat, lng, p.lat, p.lng);
+    if (d < minDist) { minDist = d; minIdx = i; }
+  });
+  // Distància acumulada fins al punt
+  let km = 0;
+  for (let i = 1; i <= minIdx; i++) {
+    km += distKm(ruta[i-1].lat, ruta[i-1].lng, ruta[i].lat, ruta[i].lng);
+  }
+  return km;
+}
+
+// =============================================
+//  MAPA
+// =============================================
+let map = null, busLayer = null, rutaLayer = null;
+
+const iconBus = L.divIcon({
+  html: '<div style="font-size:28px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">🚌</div>',
+  className: '', iconAnchor: [14, 28],
+});
+const iconParada = L.divIcon({
+  html: '<div style="font-size:22px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))">📍</div>',
+  className: '', iconAnchor: [11, 22],
+});
+
+function initMap() {
+  if (map) return;
+  map = L.map('map', { zoomControl: true }).setView([41.49, 1.9], 10);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OSM</a> © <a href="https://carto.com">CARTO</a>',
+    maxZoom: 18,
+  }).addTo(map);
+  busLayer = L.layerGroup().addTo(map);
+  rutaLayer = L.layerGroup().addTo(map);
+  setTimeout(() => map.invalidateSize(), 200);
+}
+
+function dibuixarRuta(sentit) {
+  if (!rutaLayer) return;
+  rutaLayer.clearLayers();
+  const ruta = getRuta(sentit);
+  const latlngs = ruta.map(p => [p.lat, p.lng]);
+  L.polyline(latlngs, { color: '#005A9C', weight: 4, opacity: 0.5, dashArray: '8 6' }).addTo(rutaLayer);
+}
+
+// =============================================
+//  SESSIÓ ANÒNIMA
+// =============================================
+function getSessioId() {
+  let id = sessionStorage.getItem('sessio_id');
+  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem('sessio_id', id); }
+  return id;
+}
+const SESSIO_ID = getSessioId();
+
+// =============================================
+//  LÒGICA VEURE
+// =============================================
+let updateIntervalId = null;
+let marcadorParada = null;
+
+function omplirParades(sentit) {
+  const sel = document.getElementById('sel-parada');
+  const ruta = getRuta(sentit);
+  sel.innerHTML = '<option value="">La meva parada...</option>';
+  ruta.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.nom;
+    sel.appendChild(opt);
+  });
+}
+
+async function actualitzarMapa() {
+  if (!map) return;
+  const sentit = document.getElementById('sel-sentit-veure').value;
+  const paradaIdx = document.getElementById('sel-parada').value;
+
+  // Neteja busos inactius (+10 min)
+  const limit = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  await db.from('bus_checkins').delete().lt('created_at', limit);
+
+  const { data, error } = await db.from('bus_checkins')
+    .select('lat, lon, created_at')
+    .eq('linea_bus', 'Igualada-Barcelona')
+    .eq('sentit', sentit)
+    .gt('created_at', limit);
+
+  if (error) { console.error(error); return; }
+
+  busLayer.clearLayers();
+  const ruta = getRuta(sentit);
+
+  let etaTitol = '', etaSubtitol = '', etaIcon = '🔍', estatCard = 'estat-buit';
+
+  if (!data || data.length === 0) {
+    etaTitol = 'No hi ha busos actius';
+    etaSubtitol = 'Ningú comparteix ubicació en aquesta direcció ara mateix';
+    etaIcon = '😴';
+  } else {
+    // Dibuixa els busos
+    data.forEach(b => {
+      const marca = L.marker([b.lat, b.lon], { icon: iconBus })
+        .bindTooltip('Bus', { permanent: false });
+      marca.addTo(busLayer);
+    });
+
+    if (paradaIdx !== '') {
+      const parada = ruta[parseInt(paradaIdx)];
+
+      // Dibuixa la parada
+      if (marcadorParada) marcadorParada.remove();
+      marcadorParada = L.marker([parada.lat, parada.lng], { icon: iconParada })
+        .bindTooltip(parada.nom, { permanent: true, direction: 'top' })
+        .addTo(map);
+
+      const kmParada = posicioEnRuta(parada.lat, parada.lng, ruta);
+
+      // Cerca el bus més proper (sense haver passat) o el que acaba de passar
+      let millor = null, millorKmRestants = Infinity;
+      let haPassat = null, haPassatKm = Infinity;
+
+      data.forEach(b => {
+        const kmBus = posicioEnRuta(b.lat, b.lon, ruta);
+        const diff = kmParada - kmBus;
+        if (diff > 0 && diff < millorKmRestants) {
+          millorKmRestants = diff; millor = b;
+        } else if (diff <= 0 && Math.abs(diff) < haPassatKm) {
+          haPassatKm = Math.abs(diff); haPassat = b;
+        }
+      });
+
+      if (millor) {
+        const mins = Math.round(millorKmRestants / VEL_KMH * 60);
+        if (mins <= 2) {
+          etaTitol = 'Arribarà d\'un moment a l\'altre! 🏃';
+          etaSubtitol = `El bus és a menys de ${millorKmRestants.toFixed(1)} km`;
+          etaIcon = '🚨';
+        } else {
+          etaTitol = `Arriba en uns ${mins} minuts`;
+          etaSubtitol = `El bus és a ${millorKmRestants.toFixed(1)} km de la teva parada`;
+          etaIcon = '🕐';
+        }
+        estatCard = 'estat-esperant';
+      } else if (haPassat) {
+        const mins = Math.round(haPassatKm / VEL_KMH * 60);
+        etaTitol = 'El bus ja ha passat per aquí';
+        etaSubtitol = `Va passar fa uns ${mins} minut${mins !== 1 ? 's' : ''}`;
+        etaIcon = '😞';
+        estatCard = 'estat-passat';
+      } else {
+        etaTitol = 'Bus detectat a la línia';
+        etaSubtitol = 'Selecciona la teva parada per calcular el temps';
+        etaIcon = '🚌';
+      }
+    } else {
+      etaTitol = `${data.length} bus${data.length !== 1 ? 'os' : ''} actiu${data.length !== 1 ? 's' : ''} en aquesta direcció`;
+      etaSubtitol = 'Selecciona la teva parada per saber quan arribarà';
+      etaIcon = '🚌';
+      estatCard = 'estat-esperant';
+    }
+  }
+
+  const card = document.getElementById('eta-card');
+  card.className = `visible ${estatCard}`;
+  document.getElementById('eta-icon').textContent = etaIcon;
+  document.getElementById('eta-titol').textContent = etaTitol;
+  document.getElementById('eta-subtitol').textContent = etaSubtitol;
+}
+
+// =============================================
+//  LÒGICA COMPARTIR
+// =============================================
+let sharingIntervalId = null;
+let isSharing = false;
+
+async function enviarUbicacio() {
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const sentit = document.getElementById('sel-sentit-compartir').value;
+        const { error } = await db.from('bus_checkins').upsert({
+          id: SESSIO_ID,
+          linea_bus: 'Igualada-Barcelona',
+          lat: latitude,
+          lon: longitude,
+          sentit: sentit,
+        }, { onConflict: 'id' });
+        if (!error) {
+          const ara = new Date().toLocaleTimeString('ca', { hour: '2-digit', minute: '2-digit' });
+          document.getElementById('missatge-sharing').textContent = `Compartint · Última actualització: ${ara}`;
+        }
+        resolve();
+      },
+      (err) => {
+        document.getElementById('missatge-sharing').textContent = 'Error obtenint ubicació. Comprova els permisos.';
+        resolve();
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+}
+
+async function iniciarCompartir() {
+  if (isSharing) return;
+  isSharing = true;
+  document.getElementById('btn-start').classList.add('hidden');
+  document.getElementById('btn-stop').classList.remove('hidden');
+  document.getElementById('estat-sharing').classList.remove('hidden');
+  document.getElementById('avis-pantalla').classList.remove('hidden');
+  await enviarUbicacio();
+  sharingIntervalId = setInterval(enviarUbicacio, 20000);
+  // Notificació recordatori cada 15 min
+  if ('Notification' in window && Notification.permission === 'granted') {
+    setInterval(() => {
+      new Notification('On és el bus?', {
+        body: 'Encara estàs compartint. Recorda parar quan baixis del bus! 🚌',
+        icon: '/icons/icon-192.png',
+      });
+    }, 15 * 60 * 1000);
+  }
+}
+
+async function pararCompartir() {
+  if (!isSharing) return;
+  isSharing = false;
+  clearInterval(sharingIntervalId);
+  sharingIntervalId = null;
+  // Elimina el registre de la BBDD
+  await db.from('bus_checkins').delete().eq('id', SESSIO_ID);
+  document.getElementById('btn-stop').classList.add('hidden');
+  document.getElementById('btn-start').classList.remove('hidden');
+  document.getElementById('estat-sharing').classList.add('hidden');
+  document.getElementById('avis-pantalla').classList.add('hidden');
+  document.getElementById('missatge-sharing').textContent = 'Compartint ubicació...';
+}
+
+// =============================================
+//  XAT
+// =============================================
+let canalXat = null;
+const APODOS = ['Viatger','Passatgera','Llançador','Explorador','Observadora'];
+const ADJECTIUS = ['Ràpid','Curiosa','Atent','Blau','Alegre'];
+
+function apodoAleatori() {
+  return `${APODOS[Math.floor(Math.random()*APODOS.length)]} ${ADJECTIUS[Math.floor(Math.random()*ADJECTIUS.length)]}`;
+}
+
+function afegirMissatgeXat(m) {
+  const div = document.createElement('div');
+  div.className = 'missatge-xat';
+  div.innerHTML = `<div class="apodo">${escHtml(m.apodo)}</div><div class="text">${escHtml(m.mensaje)}</div>`;
+  document.getElementById('xat-missatges').appendChild(div);
+  document.getElementById('xat-missatges').scrollTop = 9999;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function obrirXat() {
+  const nom = document.getElementById('xat-nom');
+  if (!nom.value) nom.value = apodoAleatori();
+  document.getElementById('modal-xat').classList.remove('hidden');
+  document.getElementById('xat-missatges').innerHTML = '';
+
+  const sentit = document.getElementById('sel-sentit-veure').value;
+  const { data } = await db.from('chat_messages').select('*')
+    .eq('linea_bus', 'Igualada-Barcelona')
+    .eq('sentido', sentit)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (data) data.reverse().forEach(afegirMissatgeXat);
+
+  if (canalXat) db.removeChannel(canalXat);
+  canalXat = db.channel('xat-canal')
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'chat_messages',
+      filter: `linea_bus=eq.Igualada-Barcelona`,
+    }, (payload) => afegirMissatgeXat(payload.new))
+    .subscribe();
+}
+
+async function enviarMissatgeXat() {
+  const nom = document.getElementById('xat-nom').value.trim();
+  const text = document.getElementById('xat-text').value.trim();
+  if (!nom || !text) return;
+  const sentit = document.getElementById('sel-sentit-veure').value;
+  await db.from('chat_messages').insert({ linea_bus: 'Igualada-Barcelona', sentido: sentit, apodo: nom, mensaje: text });
+  document.getElementById('xat-text').value = '';
+}
+
+// =============================================
+//  NAVEGACIÓ
+// =============================================
+function mostrarPantalla(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+document.getElementById('btn-veure').addEventListener('click', () => {
+  mostrarPantalla('screen-veure');
+  initMap();
+  const sentit = document.getElementById('sel-sentit-veure').value;
+  omplirParades(sentit);
+  dibuixarRuta(sentit);
+  actualitzarMapa();
+  clearInterval(updateIntervalId);
+  updateIntervalId = setInterval(actualitzarMapa, 20000);
+});
+
+document.getElementById('btn-compartir').addEventListener('click', () => {
+  mostrarPantalla('screen-compartir');
+  if ('Notification' in window) Notification.requestPermission();
+});
+
+document.getElementById('back-veure').addEventListener('click', () => {
+  clearInterval(updateIntervalId);
+  updateIntervalId = null;
+  if (marcadorParada) { marcadorParada.remove(); marcadorParada = null; }
+  mostrarPantalla('screen-home');
+});
+
+document.getElementById('back-compartir').addEventListener('click', async () => {
+  await pararCompartir();
+  mostrarPantalla('screen-home');
+});
+
+document.getElementById('sel-sentit-veure').addEventListener('change', (e) => {
+  omplirParades(e.target.value);
+  dibuixarRuta(e.target.value);
+  actualitzarMapa();
+});
+document.getElementById('sel-parada').addEventListener('change', actualitzarMapa);
+
+document.getElementById('btn-start').addEventListener('click', iniciarCompartir);
+document.getElementById('btn-stop').addEventListener('click', pararCompartir);
+
+document.getElementById('btn-chat-flotant').addEventListener('click', obrirXat);
+document.getElementById('xat-tancar').addEventListener('click', () => {
+  document.getElementById('modal-xat').classList.add('hidden');
+  if (canalXat) { db.removeChannel(canalXat); canalXat = null; }
+});
+document.getElementById('xat-enviar').addEventListener('click', enviarMissatgeXat);
+document.getElementById('xat-text').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') enviarMissatgeXat();
+});
+
+// Gestió de visibilitat (si l'usuari torna a l'app, actualitza)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && map) actualitzarMapa();
+});
+
+// =============================================
+//  PWA - SERVICE WORKER
+// =============================================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(reg => console.log('SW registrat:', reg.scope))
+    .catch(err => console.warn('SW error:', err));
+}
+
+// =============================================
+//  PWA - BANNER INSTAL·LACIÓ
+// =============================================
+let deferredInstall = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstall = e;
+  const banner = document.getElementById('banner-install');
+  // Mostra el banner només si no s'ha descartat
+  if (!localStorage.getItem('install-dismissed')) {
+    banner.classList.remove('hidden');
+  }
+});
+
+document.getElementById('btn-install').addEventListener('click', () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  deferredInstall.userChoice.then(() => {
+    document.getElementById('banner-install').classList.add('hidden');
+    deferredInstall = null;
+  });
+});
+
+document.getElementById('btn-install-close').addEventListener('click', () => {
+  document.getElementById('banner-install').classList.add('hidden');
+  localStorage.setItem('install-dismissed', '1');
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('banner-install').classList.add('hidden');
+});
+</script>
 </body>
 </html>

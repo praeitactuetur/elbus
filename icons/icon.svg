@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#005A9C"/>
+  <!-- Bus body -->
+  <rect x="96" y="160" width="320" height="220" rx="20" fill="white"/>
+  <!-- Windows top row -->
+  <rect x="120" y="185" width="80" height="55" rx="8" fill="#005A9C"/>
+  <rect x="216" y="185" width="80" height="55" rx="8" fill="#005A9C"/>
+  <rect x="312" y="185" width="80" height="55" rx="8" fill="#005A9C"/>
+  <!-- Door -->
+  <rect x="216" y="258" width="80" height="70" rx="6" fill="#00BFFF"/>
+  <!-- Wheels -->
+  <circle cx="160" cy="392" r="36" fill="#1a1a2e"/>
+  <circle cx="160" cy="392" r="20" fill="#aaa"/>
+  <circle cx="352" cy="392" r="36" fill="#1a1a2e"/>
+  <circle cx="352" cy="392" r="20" fill="#aaa"/>
+  <!-- Front grille -->
+  <rect x="96" y="290" width="40" height="50" rx="6" fill="#00BFFF"/>
+  <!-- Destination sign -->
+  <rect x="120" y="155" width="272" height="30" rx="6" fill="#FFD700"/>
+  <text x="256" y="177" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="18" fill="#1a1a2e">IGA · BCN</text>
+  <!-- Location pin -->
+  <circle cx="400" cy="120" r="55" fill="#28a745"/>
+  <circle cx="400" cy="108" r="28" fill="white"/>
+  <polygon points="400,165 375,120 425,120" fill="#28a745"/>
+  <circle cx="400" cy="108" r="14" fill="#28a745"/>
+</svg>

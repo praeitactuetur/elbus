@@ -1,0 +1,48 @@
+{
+  "name": "On és el bus?",
+  "short_name": "On és el bus?",
+  "description": "Seguiment col·laboratiu i anònim de la línia Igualada-Barcelona (Monbus)",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "theme_color": "#005A9C",
+  "orientation": "portrait-primary",
+  "lang": "ca",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/screenshot.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["travel", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Veure el bus",
+      "short_name": "Veure",
+      "url": "/?mode=veure",
+      "description": "Mira on és el bus"
+    },
+    {
+      "name": "Compartir ubicació",
+      "short_name": "Compartir",
+      "url": "/?mode=compartir",
+      "description": "Comparteix la teva ubicació des del bus"
+    }
+  ]
+}
