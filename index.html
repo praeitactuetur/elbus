@@ -245,6 +245,9 @@ async function actualitzarMapa() {
   const sentit = document.getElementById('sel-sentit-veure').value;
 
   const limit = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  // Neteja registres antics
+  await db.from('bus_checkins').delete().lt('created_at', limit);
+
   const { data, error } = await db.from('bus_checkins')
     .select('lat, lon')
     .eq('linea_bus', 'Igualada-Barcelona')
@@ -284,10 +287,7 @@ async function enviarUbicacio() {
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude, longitude } = pos.coords;
       const sentit = document.getElementById('sel-sentit-compartir').value;
-      // Esborra el registre anterior i insereix un de nou per refrescar created_at
-      await db.from('bus_checkins').delete().eq('id', SESSIO_ID);
       const { error } = await db.from('bus_checkins').insert({
-        id: SESSIO_ID,
         linea_bus: 'Igualada-Barcelona',
         lat: latitude,
         lon: longitude,
@@ -323,7 +323,6 @@ async function pararCompartir() {
   if (!isSharing) return;
   isSharing = false;
   clearInterval(sharingIntervalId); sharingIntervalId = null;
-  await db.from('bus_checkins').delete().eq('id', SESSIO_ID);
   document.getElementById('btn-stop').classList.add('hidden');
   document.getElementById('btn-start').classList.remove('hidden');
   document.getElementById('estat-sharing').classList.add('hidden');
