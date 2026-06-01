@@ -225,11 +225,8 @@ function initMap() {
   setTimeout(() => map.invalidateSize(), 200);
 }
 
-function dibuixarRuta(sentit) {
-  if (!rutaLayer) return;
-  rutaLayer.clearLayers();
-  const coords = sentit === 'BCN' ? RUTA : [...RUTA].reverse();
-  L.polyline(coords, { color: '#005A9C', weight: 4, opacity: 0.45, dashArray: '8 6' }).addTo(rutaLayer);
+function dibuixarRuta() {
+  // Ruta oculta fins que es configurin les parades reals
 }
 
 function getSessioId() {
