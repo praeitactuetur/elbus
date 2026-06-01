@@ -294,27 +294,7 @@ async function actualitzarMapa() {
     document.getElementById('info-icon').textContent = '🚌';
     document.getElementById('info-titol').textContent = `${n} bus${n !== 1 ? 'os' : ''} actiu${n !== 1 ? 's' : ''} en aquesta direcció`;
     card.className = 'visible verd';
-
-    // ETA aproximada si tenim la posició de l'usuari
-    if (marcadorUsuari) {
-      const uPos = marcadorUsuari.getLatLng();
-      // Busca el bus més proper a l'usuari
-      let minDist = Infinity;
-      actius.forEach(b => {
-        const d = distKm(uPos.lat, uPos.lng, b.lat, b.lon);
-        if (d < minDist) minDist = d;
-      });
-      const mins = Math.round(minDist / 50 * 60); // ~50 km/h mitjana
-      let eta;
-      if (mins <= 1) eta = 'Menys d\'1 minut';
-      else if (mins < 60) eta = `~${mins} minuts`;
-      else eta = `~${Math.round(mins/60)}h ${mins%60}min`;
-      document.getElementById('info-subtitol').textContent =
-        `Temps estimat: ${eta} (${minDist.toFixed(1)} km en línia recta) · Molt aproximat`;
-    } else {
-      document.getElementById('info-subtitol').textContent = 'Activa la localització per estimar el temps d\'arribada';
-    }
-
+    document.getElementById('info-subtitol').textContent = 'Actualitzant cada 20 segons';
     if (n === 1) map.setView([actius[0].lat, actius[0].lon], 13);
   }
 }
