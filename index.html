@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="On és el bus?">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
-  <meta name="description" content="Seguiment col·laboratiu i anònim del bus Igualada-Barcelona (Monbus)">
+  <meta name="description" content="Seguiment col·laboratiu i anònim del bus Igualada-Barcelona">
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -114,7 +114,7 @@
     <div class="home-logo">🚌</div>
     <div class="home-title">On és el bus?</div>
     <p class="home-subtitle">Seguiment col·laboratiu de la línia Igualada · Barcelona</p>
-    <div class="home-badge">🔒 100% anònim · Monbus / Hispano Igualadina</div>
+    <div class="home-badge">🔒 100% anònim</div>
     <div class="home-buttons">
       <button id="btn-veure" class="btn-home">
         <span class="btn-home-icon">🗺️</span>
@@ -244,16 +244,15 @@ async function actualitzarMapa() {
   if (!map) return;
   const sentit = document.getElementById('sel-sentit-veure').value;
 
+  const limit = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const { data, error } = await db.from('bus_checkins')
-    .select('lat, lon, updated_at')
+    .select('lat, lon')
     .eq('linea_bus', 'Igualada-Barcelona')
-    .eq('sentit', sentit);
+    .eq('sentit', sentit)
+    .gt('created_at', limit);
 
   if (error) { console.error(error); return; }
-
-  // Filtra localment els registres de fa més de 10 min
-  const limit = Date.now() - 10 * 60 * 1000;
-  const actius = (data || []).filter(b => new Date(b.updated_at).getTime() > limit);
+  const actius = data || [];
 
   busLayer.clearLayers();
   const card = document.getElementById('info-card');
@@ -285,19 +284,20 @@ async function enviarUbicacio() {
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude, longitude } = pos.coords;
       const sentit = document.getElementById('sel-sentit-compartir').value;
-      const { error } = await db.from('bus_checkins').upsert({
+      // Esborra el registre anterior i insereix un de nou per refrescar created_at
+      await db.from('bus_checkins').delete().eq('id', SESSIO_ID);
+      const { error } = await db.from('bus_checkins').insert({
         id: SESSIO_ID,
         linea_bus: 'Igualada-Barcelona',
         lat: latitude,
         lon: longitude,
         sentit: sentit,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
+      });
       if (!error) {
         const hora = new Date().toLocaleTimeString('ca', { hour: '2-digit', minute: '2-digit' });
         document.getElementById('missatge-sharing').textContent = `Compartint · Última actualització: ${hora}`;
       } else {
-        console.error('Error upsert:', error);
+        console.error('Error insert:', error);
         document.getElementById('missatge-sharing').textContent = `Error: ${error.message}`;
       }
       resolve();
