@@ -181,6 +181,7 @@
         <div id="avis-pantalla" class="avis-pantalla hidden">
           <p>⚠️ Mantén la pantalla oberta mentre viatges. Quan baixis del bus, prem "Deixar de compartir".</p>
         </div>
+        <div id="debug-box" style="margin-top:12px;padding:12px;background:#f1f5f9;border-radius:8px;font-size:0.78rem;font-family:monospace;color:#334155;word-break:break-all;display:none"></div>
       </div>
     </div>
   </div>
@@ -287,18 +288,21 @@ async function enviarUbicacio() {
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude, longitude } = pos.coords;
       const sentit = document.getElementById('sel-sentit-compartir').value;
-      const { error } = await db.from('bus_checkins').insert({
-        linea_bus: 'Igualada-Barcelona',
-        lat: latitude,
-        lon: longitude,
-        sentit: sentit,
-      });
+      const payload = { linea_bus: 'Igualada-Barcelona', lat: latitude, lon: longitude, sentit: sentit };
+      const dbg = document.getElementById('debug-box');
+      dbg.style.display = 'block';
+      dbg.textContent = `Intentant insert: ${JSON.stringify(payload)}`;
+      const { data: insertData, error } = await db.from('bus_checkins').insert(payload).select();
       if (!error) {
         const hora = new Date().toLocaleTimeString('ca', { hour: '2-digit', minute: '2-digit' });
         document.getElementById('missatge-sharing').textContent = `Compartint · Última actualització: ${hora}`;
+        dbg.textContent = `OK ${hora} · lat:${latitude.toFixed(4)} lon:${longitude.toFixed(4)}`;
+        dbg.style.background = '#d1fae5';
       } else {
         console.error('Error insert:', error);
         document.getElementById('missatge-sharing').textContent = `Error: ${error.message}`;
+        dbg.textContent = `ERROR: ${JSON.stringify(error)}`;
+        dbg.style.background = '#fee2e2';
       }
       resolve();
     }, err => {
