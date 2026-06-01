@@ -208,6 +208,12 @@ const RUTA = [
 
 let map = null, busLayer = null, rutaLayer = null, marcadorUsuari = null;
 
+function distKm(la1, ln1, la2, ln2) {
+  const R = 6371, dLat = (la2-la1)*Math.PI/180, dLng = (ln2-ln1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 const iconBus = L.divIcon({
   html: '<div style="font-size:32px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))">🚌</div>',
   className: '', iconAnchor: [16, 32],
@@ -235,6 +241,7 @@ function initMap() {
         .bindTooltip('Vostè està aquí', { permanent: false, direction: 'top' })
         .addTo(map);
       map.setView([latitude, longitude], 13);
+      actualitzarMapa(); // recalcula ETA ara que tenim posició
     }, () => {}, { enableHighAccuracy: true });
   }
 }
@@ -286,8 +293,28 @@ async function actualitzarMapa() {
     const n = actius.length;
     document.getElementById('info-icon').textContent = '🚌';
     document.getElementById('info-titol').textContent = `${n} bus${n !== 1 ? 'os' : ''} actiu${n !== 1 ? 's' : ''} en aquesta direcció`;
-    document.getElementById('info-subtitol').textContent = 'Actualitzant cada 20 segons';
     card.className = 'visible verd';
+
+    // ETA aproximada si tenim la posició de l'usuari
+    if (marcadorUsuari) {
+      const uPos = marcadorUsuari.getLatLng();
+      // Busca el bus més proper a l'usuari
+      let minDist = Infinity;
+      actius.forEach(b => {
+        const d = distKm(uPos.lat, uPos.lng, b.lat, b.lon);
+        if (d < minDist) minDist = d;
+      });
+      const mins = Math.round(minDist / 50 * 60); // ~50 km/h mitjana
+      let eta;
+      if (mins <= 1) eta = 'Menys d\'1 minut';
+      else if (mins < 60) eta = `~${mins} minuts`;
+      else eta = `~${Math.round(mins/60)}h ${mins%60}min`;
+      document.getElementById('info-subtitol').textContent =
+        `Temps estimat: ${eta} (${minDist.toFixed(1)} km en línia recta) · Molt aproximat`;
+    } else {
+      document.getElementById('info-subtitol').textContent = 'Activa la localització per estimar el temps d\'arribada';
+    }
+
     if (n === 1) map.setView([actius[0].lat, actius[0].lon], 13);
   }
 }
