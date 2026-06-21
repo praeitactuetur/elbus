@@ -218,10 +218,18 @@ function distKm(la1, ln1, la2, ln2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-const iconBus = L.divIcon({
-  html: '<div style="font-size:32px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))">🚌</div>',
-  className: '', iconAnchor: [16, 32],
-});
+function fusionarBusos(punts, distMinKm = 0.5) {
+  const grups = [];
+  for (const p of punts) {
+    const proper = grups.find(g => distKm(g.lat, g.lon, p.lat, p.lon) < distMinKm);
+    if (proper) {
+      proper.count++;
+    } else {
+      grups.push({ ...p, count: 1 });
+    }
+  }
+  return grups;
+}
 
 function initMap() {
   if (map) return;
@@ -296,18 +304,23 @@ async function actualitzarMapa() {
     card.className = 'visible gris';
   } else {
     const bounds = [];
-    actius.forEach(b => {
+    const busos = fusionarBusos(actius);
+    busos.forEach(b => {
       const label = tempsRelatiu(b.created_at);
+      const badge = b.count > 1 ? `<div style="position:absolute;top:-4px;right:-6px;background:#d9534f;color:#fff;font-size:10px;font-weight:700;border-radius:8px;padding:0 4px;min-width:16px;text-align:center">${b.count}</div>` : '';
       const busIcon = L.divIcon({
-        html: `<div style="position:relative;text-align:center"><div style="font-size:30px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))">🚌</div><div style="background:rgba(0,0,0,0.65);color:#fff;font-size:10px;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap">${label}</div></div>`,
-        className: '', iconAnchor: [16, 42],
+        html: `<div style="position:relative;display:inline-block">${badge}<div style="font-size:30px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))">🚌</div><div style="background:rgba(0,0,0,0.65);color:#fff;font-size:10px;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap;text-align:center">${label}</div></div>`,
+        className: '', iconAnchor: [20, 46],
       });
+      const popupText = b.count > 1
+        ? `Bus en marxa 🚌<br><small>${b.count} persones compartint · ${label}</small>`
+        : `Bus en marxa 🚌<br><small>Actualitzat ${label}</small>`;
       L.marker([b.lat, b.lon], { icon: busIcon })
-        .bindPopup(`Bus en marxa 🚌<br><small>Actualitzat ${label}</small>`)
+        .bindPopup(popupText)
         .addTo(busLayer);
       bounds.push([b.lat, b.lon]);
     });
-    const n = actius.length;
+    const n = busos.length;
     const latest = tempsRelatiu(actius[0].created_at);
     document.getElementById('info-icon').textContent = '🚌';
     document.getElementById('info-titol').textContent = `${n} bus${n !== 1 ? 'os' : ''} actiu${n !== 1 ? 's' : ''} en aquesta direcció`;
