@@ -317,9 +317,15 @@ function dibuixarBusos(actius) {
   }
 }
 
+let pollIntervalId = null;
+
 function subscriureRealtime() {
   if (realtimeChannel) db.removeChannel(realtimeChannel);
+  if (pollIntervalId) { clearInterval(pollIntervalId); pollIntervalId = null; }
+
   const sentit = document.getElementById('sel-sentit-veure').value;
+  let realtimeOk = false;
+
   realtimeChannel = db.channel('bus-live')
     .on('postgres_changes', {
       event: 'INSERT',
@@ -327,11 +333,19 @@ function subscriureRealtime() {
       table: 'bus_checkins',
       filter: `sentit=eq.${sentit}`,
     }, () => { actualitzarMapa(); })
-    .subscribe();
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') {
+        realtimeOk = true;
+      } else if (!realtimeOk && (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')) {
+        // Fallback: polling cada 20s si Realtime no funciona
+        pollIntervalId = setInterval(actualitzarMapa, 20000);
+      }
+    });
 }
 
 function dessubscriureRealtime() {
   if (realtimeChannel) { db.removeChannel(realtimeChannel); realtimeChannel = null; }
+  if (pollIntervalId) { clearInterval(pollIntervalId); pollIntervalId = null; }
 }
 
 let sharingIntervalId = null, isSharing = false, wakeLock = null;
