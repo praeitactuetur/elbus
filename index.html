@@ -62,6 +62,9 @@
 
     /* HEADER */
     .screen-header { background: var(--blanc); padding: 14px 16px 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); flex-shrink: 0; z-index: 10; }
+    .btn-refresh { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--blau); padding: 4px 8px; line-height: 1; }
+    .btn-refresh.spinning { animation: spin 0.6s linear; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .btn-back { background: none; border: none; cursor: pointer; font-size: 1.4rem; color: var(--blau); padding: 4px; line-height: 1; }
     .header-title { font-size: 1.1rem; font-weight: 700; color: var(--text); flex: 1; }
 
@@ -139,6 +142,7 @@
     <div class="screen-header">
       <button class="btn-back" id="back-veure">←</button>
       <span class="header-title">On és el bus?</span>
+      <button class="btn-refresh" id="btn-refresh" title="Actualitzar">↻</button>
     </div>
     <div class="veure-controls">
       <select id="sel-sentit-veure">
@@ -181,7 +185,6 @@
         <div id="avis-pantalla" class="avis-pantalla hidden">
           <p>⚠️ Mantén la pantalla oberta mentre viatges. Quan baixis del bus, prem "Deixar de compartir".</p>
         </div>
-        <div id="debug-box" style="margin-top:12px;padding:12px;background:#f1f5f9;border-radius:8px;font-size:0.78rem;font-family:monospace;color:#334155;word-break:break-all;display:none"></div>
       </div>
     </div>
   </div>
@@ -259,19 +262,25 @@ const SESSIO_ID = getSessioId();
 
 let updateIntervalId = null;
 
+function tempsRelatiu(isoStr) {
+  const sec = Math.round((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (sec < 60) return `fa ${sec}s`;
+  return `fa ${Math.round(sec / 60)} min`;
+}
+
 async function actualitzarMapa() {
   if (!map) return;
   const sentit = document.getElementById('sel-sentit-veure').value;
 
   const limit = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-  // Neteja registres antics
   await db.from('bus_checkins').delete().lt('created_at', limit);
 
   const { data, error } = await db.from('bus_checkins')
-    .select('lat, lon')
+    .select('lat, lon, created_at')
     .eq('linea_bus', 'Igualada-Barcelona')
     .eq('sentit', sentit)
-    .gt('created_at', limit);
+    .gt('created_at', limit)
+    .order('created_at', { ascending: false });
 
   if (error) { console.error(error); return; }
   const actius = data || [];
@@ -285,45 +294,63 @@ async function actualitzarMapa() {
     document.getElementById('info-subtitol').textContent = 'Ningú comparteix ubicació en aquesta direcció ara mateix';
     card.className = 'visible gris';
   } else {
+    const bounds = [];
     actius.forEach(b => {
-      L.marker([b.lat, b.lon], { icon: iconBus })
-        .bindPopup('Bus en marxa 🚌')
+      const label = tempsRelatiu(b.created_at);
+      const busIcon = L.divIcon({
+        html: `<div style="position:relative;text-align:center"><div style="font-size:30px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))">🚌</div><div style="background:rgba(0,0,0,0.65);color:#fff;font-size:10px;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap">${label}</div></div>`,
+        className: '', iconAnchor: [16, 42],
+      });
+      L.marker([b.lat, b.lon], { icon: busIcon })
+        .bindPopup(`Bus en marxa 🚌<br><small>Actualitzat ${label}</small>`)
         .addTo(busLayer);
+      bounds.push([b.lat, b.lon]);
     });
     const n = actius.length;
+    const latest = tempsRelatiu(actius[0].created_at);
     document.getElementById('info-icon').textContent = '🚌';
     document.getElementById('info-titol').textContent = `${n} bus${n !== 1 ? 'os' : ''} actiu${n !== 1 ? 's' : ''} en aquesta direcció`;
     card.className = 'visible verd';
-    document.getElementById('info-subtitol').textContent = 'Actualitzant cada 20 segons';
-    if (n === 1) map.setView([actius[0].lat, actius[0].lon], 13);
+    document.getElementById('info-subtitol').textContent = `Última posició rebuda ${latest} · Actualitzant cada 20s`;
+
+    // Fit map to show bus(es) and user
+    if (marcadorUsuari) bounds.push(marcadorUsuari.getLatLng());
+    if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    } else {
+      map.setView(bounds[0], 13);
+    }
   }
 }
 
-let sharingIntervalId = null, isSharing = false;
+let sharingIntervalId = null, isSharing = false, wakeLock = null;
+
+async function adquirirWakeLock() {
+  if ('wakeLock' in navigator) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+}
+
+async function alliberarWakeLock() {
+  if (wakeLock) { try { await wakeLock.release(); } catch {} wakeLock = null; }
+}
 
 async function enviarUbicacio() {
   return new Promise(resolve => {
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude, longitude } = pos.coords;
       const sentit = document.getElementById('sel-sentit-compartir').value;
-      const payload = { linea_bus: 'Igualada-Barcelona', lat: latitude, lon: longitude, sentit: sentit };
-      const dbg = document.getElementById('debug-box');
-      dbg.style.display = 'block';
-      dbg.textContent = `Intentant insert: ${JSON.stringify(payload)}`;
-      const { data: insertData, error } = await db.from('bus_checkins').insert(payload).select();
+      const payload = { linea_bus: 'Igualada-Barcelona', lat: latitude, lon: longitude, sentit };
+      const { error } = await db.from('bus_checkins').insert(payload);
       if (!error) {
-        const hora = new Date().toLocaleTimeString('ca', { hour: '2-digit', minute: '2-digit' });
+        const hora = new Date().toLocaleTimeString('ca', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         document.getElementById('missatge-sharing').textContent = `Compartint · Última actualització: ${hora}`;
-        dbg.textContent = `OK ${hora} · lat:${latitude.toFixed(4)} lon:${longitude.toFixed(4)}`;
-        dbg.style.background = '#d1fae5';
       } else {
         console.error('Error insert:', error);
         document.getElementById('missatge-sharing').textContent = `Error: ${error.message}`;
-        dbg.textContent = `ERROR: ${JSON.stringify(error)}`;
-        dbg.style.background = '#fee2e2';
       }
       resolve();
-    }, err => {
+    }, () => {
       document.getElementById('missatge-sharing').textContent = 'Error GPS. Comprova els permisos de localització.';
       resolve();
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
@@ -337,6 +364,7 @@ async function iniciarCompartir() {
   document.getElementById('btn-stop').classList.remove('hidden');
   document.getElementById('estat-sharing').classList.remove('hidden');
   document.getElementById('avis-pantalla').classList.remove('hidden');
+  await adquirirWakeLock();
   await enviarUbicacio();
   sharingIntervalId = setInterval(enviarUbicacio, 20000);
 }
@@ -345,6 +373,7 @@ async function pararCompartir() {
   if (!isSharing) return;
   isSharing = false;
   clearInterval(sharingIntervalId); sharingIntervalId = null;
+  await alliberarWakeLock();
   document.getElementById('btn-stop').classList.add('hidden');
   document.getElementById('btn-start').classList.remove('hidden');
   document.getElementById('estat-sharing').classList.add('hidden');
@@ -382,7 +411,19 @@ document.getElementById('sel-sentit-veure').addEventListener('change', e => {
 });
 document.getElementById('btn-start').addEventListener('click', iniciarCompartir);
 document.getElementById('btn-stop').addEventListener('click', pararCompartir);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && map) actualitzarMapa(); });
+document.addEventListener('visibilitychange', async () => {
+  if (!document.hidden) {
+    if (map) actualitzarMapa();
+    if (isSharing && !wakeLock) await adquirirWakeLock();
+  }
+});
+
+document.getElementById('btn-refresh').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-refresh');
+  btn.classList.add('spinning');
+  await actualitzarMapa();
+  setTimeout(() => btn.classList.remove('spinning'), 600);
+});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW:', e));
