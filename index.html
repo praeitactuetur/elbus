@@ -218,7 +218,7 @@ function distKm(la1, ln1, la2, ln2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function fusionarBusos(punts, distMinKm = 0.5) {
+function fusionarBusos(punts, distMinKm = 0.025) {
   const grups = [];
   for (const p of punts) {
     const proper = grups.find(g => distKm(g.lat, g.lon, p.lat, p.lon) < distMinKm);
