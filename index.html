@@ -17,7 +17,8 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
   <style>
     :root {
@@ -199,12 +200,23 @@
 
 </div>
 <script>
-const SUPABASE_URL = 'https://nrrlhixurxxsbammdqdg.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ycmxoaXh1cnh4c2JhbW1kcWRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMTA0OTIsImV4cCI6MjA5NTg4NjQ5Mn0.aNExe_JXDQlCSUDnr7qEqg-FG1akPd9wacMz9jZ2Ymg';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ── CONFIGURA FIREBASE AQUÍ ──────────────────────────────────────────────────
+// Enganxa el teu firebaseConfig de la consola de Firebase (Project settings > Your apps)
+const firebaseConfig = {
+  apiKey:            "POSA_AQUÍ",
+  authDomain:        "POSA_AQUÍ.firebaseapp.com",
+  projectId:         "POSA_AQUÍ",
+  storageBucket:     "POSA_AQUÍ.appspot.com",
+  messagingSenderId: "POSA_AQUÍ",
+  appId:             "POSA_AQUÍ",
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 let map = null, busLayer = null, marcadorUsuari = null;
-let realtimeChannel = null;
+let unsubscribeRealtime = null;
 
 function distKm(la1, ln1, la2, ln2) {
   const R = 6371, dLat = (la2-la1)*Math.PI/180, dLng = (ln2-ln1)*Math.PI/180;
@@ -253,22 +265,15 @@ function initMap() {
   }
 }
 
-async function actualitzarMapa() {
-  if (!map) return;
-  const sentit = document.getElementById('sel-sentit-veure').value;
-  const limit = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-
-  await db.from('bus_checkins').delete().lt('created_at', limit);
-
-  const { data, error } = await db.from('bus_checkins')
-    .select('lat, lon, created_at')
-    .eq('linea_bus', 'Igualada-Barcelona')
-    .eq('sentit', sentit)
-    .gt('created_at', limit)
-    .order('created_at', { ascending: false });
-
-  if (error) { console.error(error); return; }
-  dibuixarBusos(data || []);
+async function netejaAntics() {
+  const limit = new Date(Date.now() - 10 * 60 * 1000);
+  try {
+    const vells = await db.collection('bus_checkins').where('created_at', '<', limit).get();
+    if (vells.empty) return;
+    const batch = db.batch();
+    vells.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  } catch {}
 }
 
 function dibuixarBusos(actius) {
@@ -317,35 +322,27 @@ function dibuixarBusos(actius) {
   }
 }
 
-let pollIntervalId = null;
-
 function subscriureRealtime() {
-  if (realtimeChannel) db.removeChannel(realtimeChannel);
-  if (pollIntervalId) { clearInterval(pollIntervalId); pollIntervalId = null; }
-
+  if (unsubscribeRealtime) unsubscribeRealtime();
   const sentit = document.getElementById('sel-sentit-veure').value;
-  let realtimeOk = false;
+  const limit = new Date(Date.now() - 10 * 60 * 1000);
 
-  realtimeChannel = db.channel('bus-live')
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'bus_checkins',
-      filter: `sentit=eq.${sentit}`,
-    }, () => { actualitzarMapa(); })
-    .subscribe(status => {
-      if (status === 'SUBSCRIBED') {
-        realtimeOk = true;
-      } else if (!realtimeOk && (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')) {
-        // Fallback: polling cada 20s si Realtime no funciona
-        pollIntervalId = setInterval(actualitzarMapa, 20000);
-      }
-    });
+  unsubscribeRealtime = db.collection('bus_checkins')
+    .where('sentit', '==', sentit)
+    .where('created_at', '>', limit)
+    .orderBy('created_at', 'desc')
+    .onSnapshot(snapshot => {
+      const actius = snapshot.docs.map(doc => {
+        const d = doc.data();
+        return { lat: d.lat, lon: d.lon, created_at: d.created_at.toDate().toISOString() };
+      });
+      dibuixarBusos(actius);
+      netejaAntics();
+    }, err => console.error('Realtime error:', err));
 }
 
 function dessubscriureRealtime() {
-  if (realtimeChannel) { db.removeChannel(realtimeChannel); realtimeChannel = null; }
-  if (pollIntervalId) { clearInterval(pollIntervalId); pollIntervalId = null; }
+  if (unsubscribeRealtime) { unsubscribeRealtime(); unsubscribeRealtime = null; }
 }
 
 let sharingIntervalId = null, isSharing = false, wakeLock = null;
@@ -365,14 +362,19 @@ async function enviarUbicacio() {
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude, longitude } = pos.coords;
       const sentit = document.getElementById('sel-sentit-compartir').value;
-      const payload = { linea_bus: 'Igualada-Barcelona', lat: latitude, lon: longitude, sentit };
-      const { error } = await db.from('bus_checkins').insert(payload);
-      if (!error) {
+      try {
+        await db.collection('bus_checkins').add({
+          linea_bus: 'Igualada-Barcelona',
+          lat: latitude,
+          lon: longitude,
+          sentit,
+          created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        });
         const hora = new Date().toLocaleTimeString('ca', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         document.getElementById('missatge-sharing').textContent = `Compartint · Última actualització: ${hora}`;
-      } else {
-        console.error('Error insert:', error);
-        document.getElementById('missatge-sharing').textContent = `Error: ${error.message}`;
+      } catch (e) {
+        console.error('Error insert:', e);
+        document.getElementById('missatge-sharing').textContent = `Error: ${e.message}`;
       }
       resolve();
     }, () => {
@@ -414,7 +416,6 @@ function mostrarPantalla(id) {
 document.getElementById('btn-veure').addEventListener('click', () => {
   mostrarPantalla('screen-veure');
   initMap();
-  actualitzarMapa();
   subscriureRealtime();
 });
 document.getElementById('btn-compartir').addEventListener('click', () => {
@@ -437,15 +438,15 @@ document.getElementById('btn-stop').addEventListener('click', pararCompartir);
 
 document.addEventListener('visibilitychange', async () => {
   if (!document.hidden) {
-    if (map) actualitzarMapa();
+    if (map && !unsubscribeRealtime) subscriureRealtime();
     if (isSharing && !wakeLock) await adquirirWakeLock();
   }
 });
 
-document.getElementById('btn-refresh').addEventListener('click', async () => {
+document.getElementById('btn-refresh').addEventListener('click', () => {
   const btn = document.getElementById('btn-refresh');
   btn.classList.add('spinning');
-  await actualitzarMapa();
+  subscriureRealtime();
   setTimeout(() => btn.classList.remove('spinning'), 600);
 });
 
